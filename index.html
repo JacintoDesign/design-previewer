@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DESIGN.md Previewer</title>
+  <meta name="description" content="Upload a Google DESIGN.md file and preview a website styled from its design tokens." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">DESIGN.md&nbsp;Previewer</span>
+    </div>
+    <nav class="topbar-actions">
+      <a class="link" href="https://github.com/google-labs-code/design.md" target="_blank" rel="noopener">What is DESIGN.md?</a>
+      <button id="load-example" class="btn-secondary" type="button">Load example</button>
+    </nav>
+  </header>
+
+  <main id="app">
+    <!-- Landing / dropzone (shown until a file is parsed) -->
+    <section id="intro" class="intro">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button"
+           aria-label="Upload a DESIGN.md file. Drag and drop or click to browse.">
+        <input id="file-input" type="file" accept=".md,text/markdown,text/plain" hidden />
+        <div class="dropzone-icon">⬆</div>
+        <p class="dropzone-title">Drop your <strong>DESIGN.md</strong> here</p>
+        <p class="dropzone-sub">or click to browse — everything runs in your browser</p>
+      </div>
+      <div class="intro-hints">
+        <p>No file handy? <button id="load-example-2" class="link-btn" type="button">Load the Atmospheric Glass example →</button></p>
+      </div>
+      <p id="intro-error" class="error-msg" hidden></p>
+    </section>
+
+    <!-- Result: split preview + token panel (hidden until parsed) -->
+    <section id="result" class="result" hidden>
+      <div class="result-toolbar">
+        <div class="file-meta">
+          <span id="design-name" class="design-name">Untitled</span>
+          <span id="file-name" class="file-name"></span>
+        </div>
+        <div class="toolbar-controls">
+          <div class="theme-toggle" role="group" aria-label="Preview theme">
+            <button id="theme-native" class="toggle-btn is-active" type="button" data-mode="native">Native</button>
+            <button id="theme-inverse" class="toggle-btn" type="button" data-mode="inverse">Inverse</button>
+          </div>
+          <button id="reset" class="btn-secondary" type="button">New file</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="preview-pane">
+          <div id="preview-root" class="preview-root"><!-- injected --></div>
+        </div>
+        <aside class="token-pane">
+          <div class="token-tabs" role="tablist">
+            <button class="tab-btn is-active" data-tab="tokens" type="button">Tokens</button>
+            <button class="tab-btn" data-tab="prose" type="button">Notes</button>
+          </div>
+          <div id="token-panel" class="token-panel" data-tab-content="tokens"><!-- injected --></div>
+          <div id="prose-panel" class="prose-panel" data-tab-content="prose" hidden><!-- injected --></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
