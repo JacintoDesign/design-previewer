@@ -74,13 +74,16 @@ function buildContext(design, mode) {
   const rPill = radius(design, 'full', '9999px');
 
   const synthetic = r.theme !== r.native;
-  const btnBase = `border-radius:${rPill};padding:0 20px;height:42px`;
-  const primaryBtn = synthetic
-    ? `background:${r.accent};color:${r.onAccent};${btnBase}`
-    : buttonStyle(design, ['button-primary', 'btn-primary', 'primary'], `background:${r.accent};color:${r.onAccent};${btnBase}`);
-  const ghostBtn = synthetic
-    ? `background:transparent;color:${r.text};border:1px solid ${r.border};${btnBase}`
-    : buttonStyle(design, ['button-ghost', 'ghost', 'button-secondary', 'secondary'], `background:transparent;color:${r.text};border:1px solid ${r.border};${btnBase}`);
+  // Structural defaults sit *underneath* the resolved style so a component's own
+  // values win, but buttons stay well-padded when a component omits padding/height
+  // (e.g. a ghost button that only defines background + typography).
+  const btnBase = `border-radius:${rPill};padding:0 22px;height:44px`;
+  const primaryFallback = `background:${r.accent};color:${r.onAccent}`;
+  const ghostFallback = `background:transparent;color:${r.text};border:1px solid ${r.border}`;
+  const primaryBtn = `${btnBase};` +
+    (synthetic ? primaryFallback : buttonStyle(design, ['button-primary', 'btn-primary', 'primary'], primaryFallback));
+  const ghostBtn = `${btnBase};` +
+    (synthetic ? ghostFallback : buttonStyle(design, ['button-ghost', 'ghost', 'button-secondary', 'secondary'], ghostFallback));
 
   const solidBg = (firstSolidColor(r.bg) || {}).str || (r.theme === 'dark' ? '#0e0f12' : '#ffffff');
 

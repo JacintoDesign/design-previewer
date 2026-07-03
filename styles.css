@@ -192,7 +192,12 @@ body {
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
   container-type: inline-size; /* multi-pane presets reflow to the pane width */
+  display: flex;
+  flex-direction: column;
 }
+/* The injected preset fills the pane height (min-height:100% alone can't resolve
+   against a parent that only has a min-height), but still grows when taller. */
+.preview-root > * { flex: 1 0 auto; }
 
 .token-pane {
   border-left: 1px solid var(--border);
