@@ -337,9 +337,12 @@ body {
 }
 .pv-iconbtn:hover { color: var(--pv-text); }
 .pv-search {
-  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; flex: 1; max-width: 300px;
+  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; flex: none;
   background: var(--pv-surface); border: 1px solid var(--pv-border); border-radius: var(--pv-r-sm);
 }
+/* In the dashboard topbar (a flex row) the search grows horizontally; in the
+   app-shell list (a flex column) it must stay a fixed-height input, not stretch. */
+.pv-topbar .pv-search { flex: 1; max-width: 300px; }
 .pv-ic-wrap { color: var(--pv-muted); display: inline-flex; }
 
 /* Sidebar nav (dashboard / app / settings) */
