@@ -38,6 +38,18 @@ const FALLBACK = {
 };
 
 /**
+ * Build a CSS font stack from a (possibly descriptive) family declaration:
+ * the primary family quoted if needed, plus a category-appropriate fallback.
+ */
+export function familyStack(raw) {
+  const name = extractFamily(raw);
+  const tail = FALLBACK[category(raw)];
+  if (!name || isGeneric(name)) return tail;
+  const quoted = /[^a-zA-Z0-9-]/.test(name) ? `"${name}"` : name;
+  return `${quoted}, ${tail}`;
+}
+
+/**
  * Inspect a design's typography and return:
  *   families — clean, non-generic family names to request from Google Fonts
  *   stack    — a ready-to-use CSS `font-family` value (or null when nothing usable)
@@ -66,11 +78,9 @@ export function resolveFont(design) {
     families.push(name);
   }
 
-  const primary = families[0];
-  if (!primary) return { families: [], stack: null };
+  if (!families.length) return { families: [], stack: null };
 
-  const stack = `"${primary}", ${FALLBACK[category(primaryRaw)]}`;
-  return { families, stack };
+  return { families, stack: familyStack(primaryRaw) };
 }
 
 let linkEl = null;

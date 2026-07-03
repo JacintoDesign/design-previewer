@@ -1,0 +1,12 @@
+{
+  "name": "design-previewer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Upload a DESIGN.md file and preview a website styled live from its design tokens.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node --test"
+  }
+}

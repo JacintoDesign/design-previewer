@@ -45,6 +45,8 @@ export function parseDesign(raw) {
     typography: asMap(data.typography),
     rounded: asMap(data.rounded),
     spacing: asMap(data.spacing),
+    shadows: asMap(data.shadows),
+    motion: asMap(data.motion),
     components: asMap(data.components),
     body,
     raw,

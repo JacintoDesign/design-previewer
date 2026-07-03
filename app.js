@@ -3,10 +3,18 @@ import { parseDesign, DesignParseError } from './parse.js';
 import { resolveFont, loadGoogleFonts } from './fonts.js';
 import { detectTheme, resolveRoles } from './theme.js';
 import { BACKDROPS, backdropCss } from './backdrops.js';
-import { renderPreview } from './render-preview.js';
+import { renderPreview, PRESETS } from './render-preview.js';
 import { renderTokens, renderProse } from './render-tokens.js';
+import { EXPORTS } from './exports.js';
 
 const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const EXAMPLES = [
+  { file: 'atmospheric-glass.md', name: 'Atmospheric Glass' },
+  { file: 'paws-and-paths.md', name: 'Paws & Paths' },
+  { file: 'totality-festival.md', name: 'Totality Festival' },
+];
 
 const el = {
   intro: $('#intro'),
@@ -19,50 +27,137 @@ const el = {
   previewRoot: $('#preview-root'),
   tokenPanel: $('#token-panel'),
   prosePanel: $('#prose-panel'),
-  backdropSelect: $('#backdrop-select'),
-  backdropBtn: $('#backdrop-btn'),
+  presetLabel: $('#preset-label'),
   backdropSwatch: $('#backdrop-swatch'),
   backdropLabel: $('#backdrop-label'),
-  backdropMenu: $('#backdrop-menu'),
+  toast: $('#toast'),
 };
 
-let current = null; // { design, mode, backdrop }
+let current = null; // { design, mode, backdrop, preset }
+let toastTimer = null;
 
-function showError(msg) {
-  el.introError.textContent = msg;
-  el.introError.hidden = false;
+/* --------------------------------------------------------- accessible dd --- */
+
+/**
+ * Wire a `.dd` dropdown: click/keyboard open-close, arrow-key roving, Escape,
+ * outside-click, focus return. `onOpen` (re)builds the menu; `onSelect(value)`
+ * fires for the chosen `[data-value]` option.
+ */
+function setupDropdown(id, { onOpen, onSelect }) {
+  const dd = document.getElementById(id);
+  const btn = dd.querySelector('.dd-trigger');
+  const menu = dd.querySelector('.dd-menu');
+  let idx = -1;
+  const items = () => [...menu.querySelectorAll('[data-value]')];
+  const focusItem = (i) => {
+    const its = items();
+    if (!its.length) return;
+    idx = (i + its.length) % its.length;
+    its.forEach((n, j) => (n.tabIndex = j === idx ? 0 : -1));
+    its[idx].focus();
+  };
+  const open = () => {
+    if (onOpen) onOpen();
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    idx = -1;
+    requestAnimationFrame(() => focusItem(Math.max(0, items().findIndex((n) => n.classList.contains('is-active')))));
+  };
+  const close = (returnFocus) => {
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (returnFocus) btn.focus();
+  };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden ? open() : close(); });
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menu.hidden ? open() : focusItem(idx + 1); }
+  });
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); close(true); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); focusItem(idx + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusItem(idx - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); focusItem(0); }
+    else if (e.key === 'End') { e.preventDefault(); focusItem(items().length - 1); }
+  });
+  menu.addEventListener('click', (e) => {
+    const opt = e.target.closest('[data-value]');
+    if (opt) { onSelect(opt.dataset.value); close(true); }
+  });
+  document.addEventListener('click', (e) => { if (!dd.contains(e.target)) close(false); });
+  return { close };
 }
 
-function clearError() {
-  el.introError.hidden = true;
+const option = (value, label, { active = false, swatch = '', sub = '' } = {}) =>
+  `<button class="dd-option${active ? ' is-active' : ''}" type="button" role="option"
+    aria-selected="${active}" data-value="${esc(value)}" tabindex="-1">
+    ${swatch ? `<span class="dd-swatch" style="background:${swatch}"></span>` : ''}
+    <span>${esc(label)}${sub ? `<br><span class="dd-option-sub">${esc(sub)}</span>` : ''}</span>
+  </button>`;
+
+/** Copy text to the clipboard, falling back to execCommand off secure contexts. */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }
+
+/* -------------------------------------------------------------- toast --- */
+
+function showToast(msg) {
+  el.toast.textContent = msg;
+  el.toast.hidden = false;
+  requestAnimationFrame(() => el.toast.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.toast.classList.remove('show');
+    setTimeout(() => (el.toast.hidden = true), 250);
+  }, 2000);
+}
+
+/* ---------------------------------------------------------- rendering --- */
+
+function showError(msg) { el.introError.textContent = msg; el.introError.hidden = false; }
+function clearError() { el.introError.hidden = true; }
 
 function renderAll() {
   if (!current) return;
-  renderPreview(el.previewRoot, current.design, current.mode, current.backdrop);
+  renderPreview(el.previewRoot, current.design, current.mode, current.backdrop, current.preset);
   renderTokens(el.tokenPanel, current.design);
   renderProse(el.prosePanel, current.design);
 }
 
-/** Parse raw text and switch to the result view. */
 function loadDesign(raw, fileName) {
   let design;
   try {
     design = parseDesign(raw);
   } catch (err) {
-    if (err instanceof DesignParseError) showError(err.message);
-    else showError('Unexpected error: ' + err.message);
+    showError(err instanceof DesignParseError ? err.message : 'Unexpected error: ' + err.message);
     return;
   }
   clearError();
-
-  // Default the toggle to whichever theme the palette natively describes.
   const nativeMode = detectTheme(design);
-  current = { design, mode: nativeMode, backdrop: 'design' };
+  current = { design, mode: nativeMode, backdrop: 'design', preset: current?.preset || 'marketing' };
   loadGoogleFonts(resolveFont(design).families);
 
   el.designName.textContent = design.name;
   el.fileName.textContent = fileName || '';
+  el.presetLabel.textContent = (PRESETS.find((p) => p.id === current.preset) || PRESETS[0]).name;
   setMode(nativeMode);
 
   el.intro.hidden = true;
@@ -71,56 +166,23 @@ function loadDesign(raw, fileName) {
 
 function setMode(mode) {
   if (current) current.mode = mode;
-  document.querySelectorAll('.toggle-btn').forEach((b) =>
-    b.classList.toggle('is-active', b.dataset.mode === mode)
-  );
+  document.querySelectorAll('.toggle-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === mode));
   renderAll();
-  refreshBackdrops(); // swatches depend on the theme's colors
+  updateBackdropTrigger();
 }
 
-/* ------------------------------------------------------ backdrop menu --- */
-
-/** Rebuild the backdrop swatches for the current design + theme. */
-function refreshBackdrops() {
+/** Backdrop swatches depend on the theme, so recompute the trigger on changes. */
+function updateBackdropTrigger() {
   if (!current) return;
   const roles = resolveRoles(current.design, current.mode);
-  el.backdropMenu.innerHTML = BACKDROPS.map((b) => {
-    const active = b.id === current.backdrop;
-    return `<button class="backdrop-option${active ? ' is-active' : ''}" type="button"
-      role="option" aria-selected="${active}" data-backdrop="${b.id}">
-      <span class="backdrop-swatch" style="background:${backdropCss(b.id, roles)}"></span>
-      <span>${b.name}</span>
-    </button>`;
-  }).join('');
-  el.backdropMenu.querySelectorAll('.backdrop-option').forEach((btn) =>
-    btn.addEventListener('click', () => selectBackdrop(btn.dataset.backdrop))
-  );
-
   const cur = BACKDROPS.find((b) => b.id === current.backdrop) || BACKDROPS[0];
   el.backdropSwatch.style.background = backdropCss(cur.id, roles);
   el.backdropLabel.textContent = cur.name;
 }
 
-function selectBackdrop(id) {
-  if (!current) return;
-  current.backdrop = id;
-  renderPreview(el.previewRoot, current.design, current.mode, id);
-  refreshBackdrops();
-  closeBackdropMenu();
-}
-
-function openBackdropMenu() {
-  el.backdropMenu.hidden = false;
-  el.backdropBtn.setAttribute('aria-expanded', 'true');
-}
-function closeBackdropMenu() {
-  el.backdropMenu.hidden = true;
-  el.backdropBtn.setAttribute('aria-expanded', 'false');
-}
-
 function reset() {
-  current = null;
-  closeBackdropMenu();
+  const preset = current?.preset;
+  current = preset ? { preset } : null;
   el.result.hidden = true;
   el.intro.hidden = false;
   el.fileInput.value = '';
@@ -135,15 +197,65 @@ function readFile(file) {
   reader.readAsText(file);
 }
 
-async function loadExample() {
+async function loadExampleFile(file) {
+  const meta = EXAMPLES.find((e) => e.file === file) || EXAMPLES[0];
   try {
-    const res = await fetch('examples/atmospheric-glass.md');
+    const res = await fetch('examples/' + meta.file);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    loadDesign(await res.text(), 'atmospheric-glass.md (example)');
+    loadDesign(await res.text(), meta.file + ' (example)');
   } catch (err) {
     showError('Could not load the example (' + err.message + '). Are you serving over http://?');
   }
 }
+
+// --- Dropdowns ------------------------------------------------------------
+
+setupDropdown('example-dd', {
+  onOpen: () => {
+    $('#example-menu').innerHTML = EXAMPLES.map((e) => option(e.file, e.name)).join('');
+  },
+  onSelect: (file) => loadExampleFile(file),
+});
+
+setupDropdown('preset-dd', {
+  onOpen: () => {
+    $('#preset-menu').innerHTML = PRESETS.map((p) => option(p.id, p.name, { active: current?.preset === p.id })).join('');
+  },
+  onSelect: (id) => {
+    if (!current) return;
+    current.preset = id;
+    el.presetLabel.textContent = (PRESETS.find((p) => p.id === id) || PRESETS[0]).name;
+    renderPreview(el.previewRoot, current.design, current.mode, current.backdrop, id);
+  },
+});
+
+setupDropdown('backdrop-dd', {
+  onOpen: () => {
+    const roles = resolveRoles(current.design, current.mode);
+    $('#backdrop-menu').innerHTML = BACKDROPS.map((b) =>
+      option(b.id, b.name, { active: current.backdrop === b.id, swatch: backdropCss(b.id, roles) })
+    ).join('');
+  },
+  onSelect: (id) => {
+    if (!current) return;
+    current.backdrop = id;
+    renderPreview(el.previewRoot, current.design, current.mode, id, current.preset);
+    updateBackdropTrigger();
+  },
+});
+
+setupDropdown('export-dd', {
+  onOpen: () => {
+    $('#export-menu').innerHTML = EXPORTS.map((e) => option(e.id, e.name, { sub: 'Copy to clipboard' })).join('');
+  },
+  onSelect: async (id) => {
+    if (!current) return;
+    const fmt = EXPORTS.find((e) => e.id === id);
+    if (!fmt) return;
+    const ok = await copyText(fmt.run(current.design));
+    showToast(ok ? `Copied ${fmt.name} to clipboard` : 'Copy failed — clipboard blocked');
+  },
+});
 
 // --- Wire up events -------------------------------------------------------
 
@@ -154,49 +266,23 @@ el.dropzone.addEventListener('keydown', (e) => {
 el.fileInput.addEventListener('change', (e) => readFile(e.target.files[0]));
 
 ['dragenter', 'dragover'].forEach((ev) =>
-  el.dropzone.addEventListener(ev, (e) => {
-    e.preventDefault();
-    el.dropzone.classList.add('is-drag');
-  })
+  el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.add('is-drag'); })
 );
 ['dragleave', 'drop'].forEach((ev) =>
-  el.dropzone.addEventListener(ev, (e) => {
-    e.preventDefault();
-    el.dropzone.classList.remove('is-drag');
-  })
+  el.dropzone.addEventListener(ev, (e) => { e.preventDefault(); el.dropzone.classList.remove('is-drag'); })
 );
-el.dropzone.addEventListener('drop', (e) => {
-  const file = e.dataTransfer?.files?.[0];
-  readFile(file);
-});
+el.dropzone.addEventListener('drop', (e) => readFile(e.dataTransfer?.files?.[0]));
 
-$('#load-example').addEventListener('click', loadExample);
-$('#load-example-2').addEventListener('click', loadExample);
+$('#load-example-2').addEventListener('click', () => loadExampleFile('atmospheric-glass.md'));
 $('#reset').addEventListener('click', reset);
 
-document.querySelectorAll('.toggle-btn').forEach((b) =>
-  b.addEventListener('click', () => setMode(b.dataset.mode))
-);
-
-// Backdrop dropdown
-el.backdropBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  el.backdropMenu.hidden ? openBackdropMenu() : closeBackdropMenu();
-});
-document.addEventListener('click', (e) => {
-  if (!el.backdropSelect.contains(e.target)) closeBackdropMenu();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeBackdropMenu();
-});
+document.querySelectorAll('.toggle-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
 // Token / Notes tabs
 document.querySelectorAll('.tab-btn').forEach((btn) =>
   btn.addEventListener('click', () => {
     const tab = btn.dataset.tab;
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-    document.querySelectorAll('[data-tab-content]').forEach((c) => {
-      c.hidden = c.dataset.tabContent !== tab;
-    });
+    document.querySelectorAll('[data-tab-content]').forEach((c) => { c.hidden = c.dataset.tabContent !== tab; });
   })
 );

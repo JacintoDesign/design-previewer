@@ -1,6 +1,7 @@
 // resolve.js — resolve "{group.token}" references and derive the component /
 // typography / css-var helpers shared by the renderers. Color-role mapping now
 // lives in theme.js; font extraction in fonts.js.
+import { familyStack } from './fonts.js';
 
 const REF_RE = /^\{([a-zA-Z0-9]+)\.([a-zA-Z0-9-]+)\}$/;
 
@@ -27,7 +28,7 @@ export function resolveRef(value, design, seen = new Set()) {
 export function typographyToCss(t) {
   if (!t || typeof t !== 'object') return '';
   const parts = [];
-  if (t.fontFamily) parts.push(`font-family:${quoteFamily(t.fontFamily)}`);
+  if (t.fontFamily) parts.push(`font-family:${familyStack(t.fontFamily)}`);
   if (t.fontSize) parts.push(`font-size:${t.fontSize}`);
   if (t.fontWeight) parts.push(`font-weight:${t.fontWeight}`);
   if (t.lineHeight) parts.push(`line-height:${t.lineHeight}`);
@@ -35,13 +36,6 @@ export function typographyToCss(t) {
   if (t.fontFeature) parts.push(`font-feature-settings:${t.fontFeature}`);
   if (t.fontVariation) parts.push(`font-variation-settings:${t.fontVariation}`);
   return parts.join(';');
-}
-
-/** Quote a (possibly descriptive) family name and keep a generic fallback. */
-function quoteFamily(family) {
-  const primary = String(family).split(/\s*(?:\(|→|->|,|\/)/)[0].replace(/["']/g, '').trim();
-  const quoted = /[^a-zA-Z0-9-]/.test(primary) ? `"${primary}"` : primary;
-  return `${quoted}, system-ui, sans-serif`;
 }
 
 /**

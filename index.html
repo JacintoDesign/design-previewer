@@ -17,7 +17,14 @@
     </div>
     <nav class="topbar-actions">
       <a class="link" href="about.html">What is DESIGN.md?</a>
-      <button id="load-example" class="btn-secondary" type="button">Load example</button>
+      <div id="example-dd" class="dd">
+        <button id="example-btn" class="btn-secondary dd-trigger dd-plain" type="button"
+                aria-haspopup="listbox" aria-expanded="false">
+          <span class="dd-label">Load example</span>
+          <span class="dd-chev" aria-hidden="true">▾</span>
+        </button>
+        <div id="example-menu" class="dd-menu" role="listbox" aria-label="Examples" hidden></div>
+      </div>
     </nav>
   </header>
 
@@ -45,14 +52,22 @@
           <span id="file-name" class="file-name"></span>
         </div>
         <div class="toolbar-controls">
-          <div id="backdrop-select" class="backdrop-select">
-            <button id="backdrop-btn" class="backdrop-trigger" type="button"
-                    aria-haspopup="listbox" aria-expanded="false" aria-label="Preview backdrop">
-              <span id="backdrop-swatch" class="backdrop-swatch"></span>
-              <span id="backdrop-label" class="backdrop-label">Design</span>
-              <span class="backdrop-chev" aria-hidden="true">▾</span>
+          <div id="preset-dd" class="dd">
+            <button id="preset-btn" class="dd-trigger dd-plain" type="button"
+                    aria-haspopup="listbox" aria-expanded="false" aria-label="Preview layout">
+              <span id="preset-label" class="dd-label">Marketing</span>
+              <span class="dd-chev" aria-hidden="true">▾</span>
             </button>
-            <div id="backdrop-menu" class="backdrop-menu" role="listbox" aria-label="Backdrop" hidden></div>
+            <div id="preset-menu" class="dd-menu" role="listbox" aria-label="Layout" hidden></div>
+          </div>
+          <div id="backdrop-dd" class="dd">
+            <button id="backdrop-btn" class="dd-trigger" type="button"
+                    aria-haspopup="listbox" aria-expanded="false" aria-label="Preview backdrop">
+              <span id="backdrop-swatch" class="dd-swatch"></span>
+              <span id="backdrop-label" class="dd-label">Design</span>
+              <span class="dd-chev" aria-hidden="true">▾</span>
+            </button>
+            <div id="backdrop-menu" class="dd-menu" role="listbox" aria-label="Backdrop" hidden></div>
           </div>
           <div class="theme-toggle" role="group" aria-label="Preview theme">
             <button id="theme-light" class="toggle-btn" type="button" data-mode="light">Light</button>
@@ -70,6 +85,14 @@
           <div class="token-tabs" role="tablist">
             <button class="tab-btn is-active" data-tab="tokens" type="button">Tokens</button>
             <button class="tab-btn" data-tab="prose" type="button">Notes</button>
+            <div id="export-dd" class="dd token-export">
+              <button id="export-btn" class="dd-trigger dd-plain" type="button"
+                      aria-haspopup="menu" aria-expanded="false">
+                <span class="dd-label">Export</span>
+                <span class="dd-chev" aria-hidden="true">▾</span>
+              </button>
+              <div id="export-menu" class="dd-menu" role="menu" aria-label="Export tokens" hidden></div>
+            </div>
           </div>
           <div id="token-panel" class="token-panel" data-tab-content="tokens"><!-- injected --></div>
           <div id="prose-panel" class="prose-panel" data-tab-content="prose" hidden><!-- injected --></div>
@@ -77,6 +100,8 @@
       </div>
     </section>
   </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="app.js"></script>
 </body>

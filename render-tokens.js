@@ -96,6 +96,49 @@ function renderSpacing(spacing) {
   return section('Spacing', entries.length, `<div class="tk-spaces">${items}</div>`);
 }
 
+function renderShadows(shadows) {
+  const entries = Object.entries(shadows || {});
+  if (!entries.length) return '';
+  const items = entries
+    .map(
+      ([name, val]) => `<div class="tk-shadow">
+        <span class="tk-shadow-box" style="box-shadow:${esc(String(val))}"></span>
+        <span class="tk-swatch-meta">
+          <code class="tk-name">${esc(name)}</code>
+          <code class="tk-val">${esc(String(val))}</code>
+        </span>
+      </div>`
+    )
+    .join('');
+  return section('Shadows', entries.length, `<div class="tk-shadows">${items}</div>`);
+}
+
+function renderMotion(motion) {
+  const entries = Object.entries(motion || {});
+  if (!entries.length) return '';
+  const items = entries
+    .map(([name, val]) => {
+      const v = String(val);
+      const isDur = /^[\d.]+m?s$/.test(v.trim());
+      const isEase = /cubic-bezier|ease|steps|linear|spring/i.test(v);
+      const trans = isDur
+        ? `transition:transform ${v} cubic-bezier(0.2,0.85,0.3,1)`
+        : isEase
+        ? `transition:transform 1s ${v}`
+        : '';
+      const track = trans
+        ? `<div class="tk-motion-track"><span class="tk-motion-dot" style="${trans}"></span></div>`
+        : '';
+      return `<div class="tk-motion" title="${esc(name)}: ${esc(v)}">
+        <div class="tk-motion-meta"><code class="tk-name">${esc(name)}</code><code class="tk-val">${esc(v)}</code></div>
+        ${track}
+      </div>`;
+    })
+    .join('');
+  const hint = '<p class="tk-hint">Hover a row to preview the curve.</p>';
+  return section('Motion', entries.length, `<div class="tk-motions">${items}</div>${hint}`);
+}
+
 function renderComponents(design) {
   const names = Object.keys(design.components);
   if (!names.length) return '';
@@ -121,6 +164,8 @@ export function renderTokens(el, design) {
     renderTypography(design.typography) +
     renderRounded(design.rounded) +
     renderSpacing(design.spacing) +
+    renderShadows(design.shadows) +
+    renderMotion(design.motion) +
     renderComponents(design) || '<p class="tk-empty">No tokens found.</p>';
 }
 
