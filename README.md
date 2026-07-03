@@ -19,8 +19,11 @@ browser; nothing is uploaded.
 - **Loads your fonts.** Family names are extracted from the typography tokens — even from a
   descriptive string like `"JetBrains Mono (next/font/google…) → ui-monospace, …"` — requested from
   Google Fonts, and applied with category-correct fallbacks.
-- **Layout presets.** View the tokens as a **Marketing** page, an analytics **Dashboard**, or a
-  three-pane **App shell** — each reflows to the pane width via container queries.
+- **Layout presets.** View the tokens as a **Marketing** page, an analytics **Dashboard**, a
+  three-pane **App shell** (mail), a **Settings** screen (form controls), a **Sign-in** card, or an
+  **Article** (full type scale). The dashboard, app, settings, and article presets are clickable —
+  switch views, folders, messages, and sections — and each reflows to the pane width via container
+  queries.
 - **Backdrop** selector — swap the preview stage between the design's own background and generated
   gradient/pattern options (Aurora, Spotlight, Mesh, Dot grid, Grid, Solid), built from your theme +
   accent. Glass surfaces use `backdrop-filter` (with an opaque `@supports` fallback) so
@@ -73,7 +76,7 @@ fonts.js            font-family extraction + Google Fonts loading
 backdrops.js        generated gradient / pattern preview backdrops
 exports.js          CSS-vars / Tailwind / JSON token exporters
 resolve.js          "{group.token}" reference resolution + component / CSS-var helpers
-render-preview.js   the three layout presets (marketing / dashboard / app shell)
+render-preview.js   six layout presets (marketing / dashboard / app / settings / sign-in / article)
 render-tokens.js    the token inspector + prose renderer
 server.mjs          no-cache static dev server
 theme.test.mjs      unit tests (node --test)

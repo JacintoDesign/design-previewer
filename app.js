@@ -278,6 +278,28 @@ $('#reset').addEventListener('click', reset);
 
 document.querySelectorAll('.toggle-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
+// Preview navigation: clicking a [data-nav] element activates it and reveals the
+// matching [data-panel] within the same scope. Values are namespaced by a group
+// prefix ("view:overview", "folder:inbox") so independent navs don't collide.
+// One delegated listener on the persistent root survives every re-render.
+const navGroup = (v) => (v.includes(':') ? v.slice(0, v.indexOf(':')) : v);
+el.previewRoot.addEventListener('click', (e) => {
+  const nav = e.target.closest('[data-nav]');
+  if (!nav) return;
+  const scope = nav.closest('[data-nav-scope]') || el.previewRoot;
+  const grp = navGroup(nav.dataset.nav);
+  scope.querySelectorAll('[data-nav]').forEach((n) => {
+    if (navGroup(n.dataset.nav) === grp) n.classList.toggle('pv-active', n === nav);
+  });
+  if (nav.dataset.scroll) {
+    scope.querySelector(nav.dataset.scroll)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  scope.querySelectorAll('[data-panel]').forEach((p) => {
+    if (navGroup(p.dataset.panel) === grp) p.hidden = p.dataset.panel !== nav.dataset.nav;
+  });
+});
+
 // Token / Notes tabs
 document.querySelectorAll('.tab-btn').forEach((btn) =>
   btn.addEventListener('click', () => {
