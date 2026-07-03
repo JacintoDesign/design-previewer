@@ -11,10 +11,23 @@ radius, and components — plus a live token inspector. Everything runs in the b
 - Renders a mock landing page — nav, hero, buttons, cards, a sign-up form, footer — driven entirely
   by your tokens. Component definitions (e.g. `button-primary`) are used when present; token
   references like `{colors.primary}` / `{rounded.lg}` are resolved.
+- **Vocabulary-agnostic theming.** Your colors can be named anything — Material 3 (`surface`,
+  `on-surface`, `primary`), a bespoke set (`accent`, `navy`, `glass-1`, `text-primary`), or a mix.
+  Each is mapped onto the semantic roles the preview needs (bg, surface, text, muted, border,
+  accent) via alias lists first, then color heuristics (e.g. the most saturated hue becomes the
+  accent) — so the preview is themed by your real tokens, not defaults.
+- **Loads your font.** The primary family is extracted from the typography tokens — even from a
+  descriptive string like `"JetBrains Mono (next/font/google…) → ui-monospace, …"` — requested from
+  Google Fonts, and applied across the whole preview.
 - Shows a **token inspector**: color swatches, the type scale, radius and spacing samples, and each
   defined component. A **Notes** tab renders the markdown prose from the file.
-- **Native / Inverse** toggle flips the preview between the file's palette and its Material
-  `inverse-*` roles.
+- **Light / Dark** toggle. The design's native theme is detected from its palette and selected by
+  default; flipping to the other mode synthesizes a clean opposite theme while keeping your accent
+  (nudging it only if it would fail contrast against the new background).
+- **Backdrop** selector — swap the preview stage between the design's own background and generated
+  gradient/pattern options (Aurora, Spotlight, Mesh, Dot grid, Grid, Solid). Each is built from your
+  theme + accent, and the preview's glass surfaces use `backdrop-filter`, so translucent,
+  glassmorphic designs actually show off over an interesting backdrop.
 
 ## Run locally
 
@@ -38,7 +51,10 @@ index.html          single page (uploader + split preview / token panel)
 styles.css          app chrome (the preview itself is styled from tokens)
 app.js              orchestration: input, parse, render, theme toggle, tabs
 parse.js            frontmatter split + YAML parse + normalization
-resolve.js          "{group.token}" reference resolution + CSS-var helpers
+theme.js            color parsing + vocabulary-agnostic role mapping + theme detection + contrast clamp
+fonts.js            font-family extraction + Google Fonts loading
+backdrops.js        generated gradient / pattern preview backdrops
+resolve.js          "{group.token}" reference resolution + component / CSS-var helpers
 render-preview.js   the sample landing page
 render-tokens.js    the token inspector + prose renderer
 examples/           bundled sample DESIGN.md files

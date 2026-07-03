@@ -143,6 +143,37 @@ body {
 }
 .toggle-btn.is-active { background: var(--accent); color: #fff; }
 
+/* Backdrop dropdown */
+.backdrop-select { position: relative; }
+.backdrop-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px 4px 5px; color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+  transition: border-color .15s;
+}
+.backdrop-trigger:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.backdrop-label { line-height: 1; }
+.backdrop-chev { color: var(--muted); font-size: 10px; }
+.backdrop-swatch {
+  width: 22px; height: 22px; border-radius: 6px; flex: none;
+  background-color: var(--panel-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent);
+}
+.backdrop-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 6px; min-width: 190px; display: grid; gap: 2px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .45);
+}
+.backdrop-option {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; color: var(--text); font: inherit; font-size: 13px;
+  padding: 6px 8px; border-radius: 8px; cursor: pointer; text-align: left;
+}
+.backdrop-option:hover { background: var(--panel-2); }
+.backdrop-option.is-active { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.backdrop-option .backdrop-swatch { width: 30px; height: 26px; }
+
 .split { flex: 1; display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
 .preview-pane {
   overflow: auto;
@@ -186,6 +217,13 @@ body {
 .tk-name { font-family: var(--mono); font-size: 12px; color: var(--text); }
 .tk-val { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
+.tk-fontfamily {
+  font-family: var(--mono); font-size: 12px; color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+  word-break: break-word;
+}
+
 .tk-swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .tk-swatch { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .tk-chip { width: 26px; height: 26px; border-radius: 7px; flex: none; }
@@ -228,8 +266,8 @@ body {
   background: var(--panel-2); padding: 1px 5px; border-radius: 5px;
 }
 
-/* Sample-page preview internals (layout only; colors/type come from tokens) */
-.pv-page { display: flex; flex-direction: column; min-height: 100%; font-family: system-ui, sans-serif; }
+/* Sample-page preview internals (layout only; colors/type/font come from tokens) */
+.pv-page { display: flex; flex-direction: column; min-height: 100%; }
 .pv-nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; }
 .pv-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
 .pv-brand-mark { width: 22px; height: 22px; display: inline-block; }
@@ -246,6 +284,12 @@ body {
 .pv-cards {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px; padding: 0 32px 40px;
+}
+/* Glass: harmless on opaque surfaces, but lets translucent ones blur the
+   backdrop behind them so glassmorphic designs actually read. */
+.pv-card, .pv-signup, .pv-input {
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
 }
 .pv-card { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
 .pv-card-dot { width: 34px; height: 34px; }

@@ -43,20 +43,29 @@ function renderColors(colors) {
 }
 
 function renderTypography(typography) {
-  const entries = Object.entries(typography);
-  if (!entries.length) return '';
+  // A top-level `fontFamily` string describes the whole ramp; the rest are roles.
+  const familyDecl = typeof typography.fontFamily === 'string' ? typography.fontFamily : '';
+  const entries = Object.entries(typography).filter(
+    ([name, t]) => name !== 'fontFamily' && t && typeof t === 'object'
+  );
+  if (!entries.length && !familyDecl) return '';
+
+  const familyBlock = familyDecl
+    ? `<div class="tk-fontfamily">${esc(familyDecl)}</div>`
+    : '';
   const rows = entries
     .map(([name, t]) => {
       const size = (t && t.fontSize) || '';
       const family = (t && t.fontFamily) || '';
+      const sub = [family, size].filter(Boolean).map(esc).join(' · ');
       return `<div class="tk-type-row">
         <div class="tk-type-meta"><code class="tk-name">${esc(name)}</code>
-          <span class="tk-type-sub">${esc(family)}${size ? ' · ' + esc(size) : ''}</span></div>
+          <span class="tk-type-sub">${sub}</span></div>
         <div class="tk-type-sample" style="${typographyToCss(t)}">Ag</div>
       </div>`;
     })
     .join('');
-  return section('Typography', entries.length, `<div class="tk-types">${rows}</div>`);
+  return section('Typography', entries.length, familyBlock + `<div class="tk-types">${rows}</div>`);
 }
 
 function renderRounded(rounded) {

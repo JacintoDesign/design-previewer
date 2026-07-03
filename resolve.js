@@ -1,11 +1,12 @@
-// resolve.js — resolve "{group.token}" references and derive helpers used by both renderers.
+// resolve.js — resolve "{group.token}" references and derive the component /
+// typography / css-var helpers shared by the renderers. Color-role mapping now
+// lives in theme.js; font extraction in fonts.js.
 
 const REF_RE = /^\{([a-zA-Z0-9]+)\.([a-zA-Z0-9-]+)\}$/;
 
 /**
  * Resolve a single token value. If it is a "{group.token}" reference, look it up
- * in the design; otherwise return the literal unchanged. Typography references
- * resolve to the typography object (not a string).
+ * in the design; otherwise return the literal unchanged.
  */
 export function resolveRef(value, design, seen = new Set()) {
   if (typeof value !== 'string') return value;
@@ -22,14 +23,6 @@ export function resolveRef(value, design, seen = new Set()) {
   return resolveRef(bucket[token], design, seen);
 }
 
-/** Pick the first available color role from a candidate list. */
-export function pickColor(colors, candidates, fallback) {
-  for (const name of candidates) {
-    if (colors[name]) return colors[name];
-  }
-  return fallback;
-}
-
 /** Turn a typography token object into an inline CSS style string. */
 export function typographyToCss(t) {
   if (!t || typeof t !== 'object') return '';
@@ -44,24 +37,16 @@ export function typographyToCss(t) {
   return parts.join(';');
 }
 
+/** Quote a (possibly descriptive) family name and keep a generic fallback. */
 function quoteFamily(family) {
-  // Add quotes around multi-word families, keep generic fallback.
-  const primary = /[^a-zA-Z0-9-]/.test(family) ? `"${family}"` : family;
-  return `${primary}, system-ui, sans-serif`;
-}
-
-/** Collect every distinct fontFamily referenced in the typography tokens. */
-export function collectFontFamilies(design) {
-  const set = new Set();
-  for (const t of Object.values(design.typography)) {
-    if (t && t.fontFamily) set.add(t.fontFamily);
-  }
-  return [...set];
+  const primary = String(family).split(/\s*(?:\(|→|->|,|\/)/)[0].replace(/["']/g, '').trim();
+  const quoted = /[^a-zA-Z0-9-]/.test(primary) ? `"${primary}"` : primary;
+  return `${quoted}, system-ui, sans-serif`;
 }
 
 /**
  * Emit color / rounded / spacing tokens as CSS custom properties so the preview
- * DOM can consume them (e.g. var(--color-primary)).
+ * DOM can consume them (e.g. var(--color-accent)).
  */
 export function tokensToCssVars(design) {
   const lines = [];
@@ -89,6 +74,7 @@ export function resolveComponent(name, design) {
   const decls = [];
   if (resolved.backgroundColor) decls.push(`background:${resolved.backgroundColor}`);
   if (resolved.textColor) decls.push(`color:${resolved.textColor}`);
+  if (resolved.border) decls.push(`border:${resolved.border}`);
   if (resolved.rounded) decls.push(`border-radius:${resolved.rounded}`);
   if (resolved.padding) decls.push(`padding:${resolved.padding}`);
   if (resolved.height) decls.push(`height:${resolved.height}`);

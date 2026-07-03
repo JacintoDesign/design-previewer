@@ -1,18 +1,15 @@
 // render-preview.js — build a sample landing page styled entirely from the tokens.
-import {
-  pickColor,
-  typographyToCss,
-  resolveComponent,
-  findComponent,
-  tokensToCssVars,
-} from './resolve.js';
+import { typographyToCss, findComponent, tokensToCssVars } from './resolve.js';
+import { resolveRoles } from './theme.js';
+import { resolveFont } from './fonts.js';
+import { backdropCss } from './backdrops.js';
 
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /** Pick a typography token by trying name substrings in order. */
 function typo(design, patterns) {
-  const names = Object.keys(design.typography);
+  const names = Object.keys(design.typography).filter((n) => n !== 'fontFamily');
   for (const pat of patterns) {
     const hit = names.find((n) => n.toLowerCase().includes(pat));
     if (hit) return design.typography[hit];
@@ -21,39 +18,6 @@ function typo(design, patterns) {
 }
 
 const tStyle = (design, patterns) => typographyToCss(typo(design, patterns));
-
-/** Compute the color roles that drive the sample page for a given theme mode. */
-function roles(design, mode) {
-  const c = design.colors;
-  if (mode === 'inverse') {
-    const bg = pickColor(c, ['inverse-surface', 'on-surface', 'on-background'], '#1b1b1b');
-    const text = pickColor(c, ['inverse-on-surface', 'surface', 'background'], '#ffffff');
-    return {
-      bg,
-      text,
-      card: `color-mix(in srgb, ${text} 8%, transparent)`,
-      cardText: text,
-      muted: `color-mix(in srgb, ${text} 62%, transparent)`,
-      border: `color-mix(in srgb, ${text} 18%, transparent)`,
-      primary: pickColor(c, ['primary'], '#5b8def'),
-      onPrimary: pickColor(c, ['on-primary'], '#ffffff'),
-      secondary: pickColor(c, ['secondary', 'tertiary'], text),
-    };
-  }
-  const bg = pickColor(c, ['background', 'surface', 'surface-container-lowest'], '#ffffff');
-  const text = pickColor(c, ['on-background', 'on-surface'], '#111111');
-  return {
-    bg,
-    text,
-    card: pickColor(c, ['surface-container', 'surface-container-high', 'surface-variant', 'surface-container-low', 'surface'], bg),
-    cardText: pickColor(c, ['on-surface', 'on-background'], text),
-    muted: pickColor(c, ['on-surface-variant', 'outline'], text),
-    border: pickColor(c, ['outline-variant', 'outline'], `color-mix(in srgb, ${text} 15%, transparent)`),
-    primary: pickColor(c, ['primary'], '#5b8def'),
-    onPrimary: pickColor(c, ['on-primary'], '#ffffff'),
-    secondary: pickColor(c, ['secondary', 'tertiary'], text),
-  };
-}
 
 /** Inline style for a button, preferring a matching component definition. */
 function buttonStyle(design, patterns, fallback) {
@@ -68,28 +32,33 @@ const radius = (design, key, fallback) =>
 /**
  * Render the sample landing page into `root` for the given design + mode.
  */
-export function renderPreview(root, design, mode) {
-  const r = roles(design, mode);
+export function renderPreview(root, design, mode, backdrop = 'design') {
+  const r = resolveRoles(design, mode);
+  const font = resolveFont(design).stack;
+  const stageBg = backdropCss(backdrop, r);
+
   const rMd = radius(design, 'md', radius(design, 'DEFAULT', '12px'));
   const rLg = radius(design, 'lg', rMd);
   const rPill = radius(design, 'full', '9999px');
 
-  const heroTitle = tStyle(design, ['display', 'headline-xl', 'headline-lg', 'headline', 'title']);
+  const heroTitle = tStyle(design, ['display', 'headline-xl', 'headline-lg', 'headline', 'title', 'heading']);
   const heroBody = tStyle(design, ['body-lg', 'body', 'body-md']);
-  const eyebrow = tStyle(design, ['label', 'overline', 'caption']);
-  const cardTitle = tStyle(design, ['headline-md', 'title', 'headline', 'label-lg']);
-  const cardBody = tStyle(design, ['body-md', 'body', 'body-sm']);
+  const eyebrow = tStyle(design, ['label', 'overline', 'caption', 'micro', 'row']);
+  const cardTitle = tStyle(design, ['headline-md', 'title', 'headline', 'heading', 'label-lg']);
+  const cardBody = tStyle(design, ['body-md', 'body', 'body-sm', 'row', 'caption']);
 
-  const primaryBtn = buttonStyle(
-    design,
-    ['button-primary', 'btn-primary', 'primary'],
-    `background:${r.primary};color:${r.onPrimary};border-radius:${rPill};padding:0 24px;height:48px`
-  );
-  const ghostBtn = buttonStyle(
-    design,
-    ['button-ghost', 'ghost', 'button-secondary', 'secondary'],
-    `background:transparent;color:${r.text};border:1px solid ${r.border};border-radius:${rPill};padding:0 24px;height:48px`
-  );
+  // In a synthesized (non-native) theme the roles are derived neutrals + a
+  // contrast-checked accent; component definitions carry the native palette and
+  // would clash, so fall back to the role system for buttons in that mode.
+  const synthetic = r.theme !== r.native;
+  const primaryFallback = `background:${r.accent};color:${r.onAccent};border-radius:${rPill};padding:0 24px;height:48px`;
+  const ghostFallback = `background:transparent;color:${r.text};border:1px solid ${r.border};border-radius:${rPill};padding:0 24px;height:48px`;
+  const primaryBtn = synthetic
+    ? primaryFallback
+    : buttonStyle(design, ['button-primary', 'btn-primary', 'primary'], primaryFallback);
+  const ghostBtn = synthetic
+    ? ghostFallback
+    : buttonStyle(design, ['button-ghost', 'ghost', 'button-secondary', 'secondary'], ghostFallback);
 
   const cards = [
     { t: 'Consistent by default', b: 'Every surface, radius, and type ramp comes straight from your tokens.' },
@@ -98,8 +67,8 @@ export function renderPreview(root, design, mode) {
   ]
     .map(
       (card) => `
-      <article class="pv-card" style="background:${r.card};color:${r.cardText};border:1px solid ${r.border};border-radius:${rLg}">
-        <div class="pv-card-dot" style="background:${r.primary};border-radius:${rPill}"></div>
+      <article class="pv-card" style="background:${r.surface};color:${r.text};border:1px solid ${r.border};border-radius:${rLg}">
+        <div class="pv-card-dot" style="background:${r.accent};border-radius:${rPill}"></div>
         <h3 style="${cardTitle};margin:0">${esc(card.t)}</h3>
         <p style="${cardBody};color:${r.muted};margin:0">${esc(card.b)}</p>
       </article>`
@@ -108,14 +77,14 @@ export function renderPreview(root, design, mode) {
 
   root.setAttribute(
     'style',
-    `${tokensToCssVars(design)}\nbackground:${r.bg};color:${r.text};`
+    `${tokensToCssVars(design)}\nbackground:${stageBg};color:${r.text};${font ? `font-family:${font};` : ''}`
   );
 
   root.innerHTML = `
     <div class="pv-page">
       <nav class="pv-nav" style="border-bottom:1px solid ${r.border}">
-        <span class="pv-brand" style="${tStyle(design, ['headline-md', 'title', 'label-lg']) || ''}">
-          <span class="pv-brand-mark" style="background:${r.primary};border-radius:${rMd}"></span>
+        <span class="pv-brand" style="${tStyle(design, ['headline-md', 'title', 'heading', 'label-lg']) || ''}">
+          <span class="pv-brand-mark" style="background:${r.accent};border-radius:${rMd}"></span>
           ${esc(design.name)}
         </span>
         <span class="pv-nav-links" style="${eyebrow};color:${r.muted}">
@@ -125,7 +94,7 @@ export function renderPreview(root, design, mode) {
       </nav>
 
       <header class="pv-hero">
-        <p class="pv-eyebrow" style="${eyebrow};color:${r.primary}">${esc(design.name)} design system</p>
+        <p class="pv-eyebrow" style="${eyebrow};color:${r.accent}">${esc(design.name)} design system</p>
         <h1 style="${heroTitle};margin:0;max-width:16ch">Design once. Ship it everywhere.</h1>
         <p style="${heroBody};color:${r.muted};margin:0;max-width:48ch">
           This page is rendered live from your DESIGN.md tokens — colors, type, spacing, radius,
@@ -139,14 +108,14 @@ export function renderPreview(root, design, mode) {
 
       <section class="pv-cards">${cards}</section>
 
-      <section class="pv-signup" style="background:${r.card};border:1px solid ${r.border};border-radius:${rLg}">
+      <section class="pv-signup" style="background:${r.surface};border:1px solid ${r.border};border-radius:${rLg}">
         <div>
           <h3 style="${cardTitle};margin:0 0 4px">Stay in the loop</h3>
           <p style="${cardBody};color:${r.muted};margin:0">Drop your email — see how form controls inherit the tokens.</p>
         </div>
         <form class="pv-form" onsubmit="return false">
           <input class="pv-input" type="email" placeholder="you@example.com"
-            style="background:${r.bg};color:${r.text};border:1px solid ${r.border};border-radius:${rPill};${cardBody}" />
+            style="background:${r.surface};color:${r.text};border:1px solid ${r.border};border-radius:${rPill};${cardBody}" />
           <button class="pv-btn" style="${primaryBtn}">Subscribe</button>
         </form>
       </section>
