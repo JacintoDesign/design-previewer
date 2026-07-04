@@ -4,24 +4,38 @@
 import { familyStack } from './fonts.js';
 
 const REF_RE = /^\{([a-zA-Z0-9]+)\.([a-zA-Z0-9-]+)\}$/;
+const REF_RE_G = /\{([a-zA-Z0-9]+)\.([a-zA-Z0-9-]+)\}/g;
+
+function lookupRef(group, token, design, seen) {
+  const key = group + '.' + token;
+  if (seen.has(key)) return undefined; // guard against cycles
+  const bucket = design[group];
+  if (!bucket || !(token in bucket)) return undefined; // dangling ref
+  const next = new Set(seen);
+  next.add(key);
+  return resolveRef(bucket[token], design, next);
+}
 
 /**
- * Resolve a single token value. If it is a "{group.token}" reference, look it up
- * in the design; otherwise return the literal unchanged.
+ * Resolve a single token value. A value that is *entirely* one "{group.token}"
+ * reference resolves to the referenced value as-is (which may be a non-string,
+ * e.g. a typography object). A ref embedded inside a larger string (e.g. a
+ * shorthand like "3px solid {colors.line}") is substituted inline wherever it
+ * resolves to a string or number; anything else is left as a literal.
  */
 export function resolveRef(value, design, seen = new Set()) {
   if (typeof value !== 'string') return value;
   const m = value.match(REF_RE);
-  if (!m) return value;
-
-  const [, group, token] = m;
-  const key = group + '.' + token;
-  if (seen.has(key)) return value; // guard against cycles
-  seen.add(key);
-
-  const bucket = design[group];
-  if (!bucket || !(token in bucket)) return value; // dangling ref → leave as-is
-  return resolveRef(bucket[token], design, seen);
+  if (m) {
+    const [, group, token] = m;
+    const resolved = lookupRef(group, token, design, seen);
+    return resolved === undefined ? value : resolved;
+  }
+  if (!value.includes('{')) return value;
+  return value.replace(REF_RE_G, (match, group, token) => {
+    const resolved = lookupRef(group, token, design, seen);
+    return typeof resolved === 'string' || typeof resolved === 'number' ? String(resolved) : match;
+  });
 }
 
 /** Turn a typography token object into an inline CSS style string. */
@@ -54,12 +68,7 @@ function cssKey(k) {
   return String(k).toLowerCase();
 }
 
-/**
- * Build a resolved component style object: every property with refs resolved,
- * and a ready-to-use inline CSS string (`css`) plus the raw typography token if any.
- */
-export function resolveComponent(name, design) {
-  const raw = design.components[name];
+function buildComponent(name, raw, design) {
   if (!raw || typeof raw !== 'object') return null;
 
   const resolved = {};
@@ -82,6 +91,26 @@ export function resolveComponent(name, design) {
   if (typoCss) decls.push(typoCss);
 
   return { name, resolved, css: decls.join(';'), typography: typo };
+}
+
+// State-variant suffixes: `button-primary-hover` is a variant of `button-primary`.
+const STATE_SUFFIX = /^(.*)-(hover|active|focus|focused|pressed|disabled|selected|checked|open|default)$/i;
+
+/**
+ * Build a resolved component style object: every property with refs resolved,
+ * and a ready-to-use inline CSS string (`css`) plus the raw typography token if any.
+ * A state variant (e.g. `button-primary-hover`) that has a matching base
+ * component inherits the base's shape (radius, padding, height, type), with the
+ * variant's own declarations overriding — so a partial variant that only sets a
+ * color still looks like the button it belongs to.
+ */
+export function resolveComponent(name, design) {
+  const raw = design.components[name];
+  if (!raw || typeof raw !== 'object') return null;
+  const m = STATE_SUFFIX.exec(name);
+  const base = m && design.components[m[1]];
+  const effective = base && typeof base === 'object' ? { ...base, ...raw } : raw;
+  return buildComponent(name, effective, design);
 }
 
 /** Find the first component whose name matches any of the given substrings. */

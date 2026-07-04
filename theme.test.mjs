@@ -3,7 +3,7 @@
 // CDN js-yaml import is not exercised here.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseColor, luminance, saturation, detectTheme, resolveRoles, firstSolidColor } from './theme.js';
+import { parseColor, luminance, saturation, detectTheme, resolveRoles, firstSolidColor, flattenColor, contrastRatio } from './theme.js';
 import { resolveFont, familyStack } from './fonts.js';
 import { backdropCss } from './backdrops.js';
 import { toCssVars, toTailwind, toJson } from './exports.js';
@@ -67,10 +67,29 @@ test('accent is clamped (not invisible) in a synthesized light theme', () => {
   assert.equal(r.onAccent, '#ffffff'); // recomputed for the darkened fill
 });
 
+test('contrastRatio grades black-on-white at the WCAG maximum', () => {
+  const r = contrastRatio(parseColor('#000000'), parseColor('#ffffff'));
+  assert.ok(Math.abs(r - 21) < 0.01);
+  // Order-independent.
+  assert.equal(contrastRatio(parseColor('#fff'), parseColor('#000')).toFixed(2), '21.00');
+});
+
+test('flattenColor resolves hex, alpha, and one-level color-mix', () => {
+  // Plain hex passes through.
+  const hex = flattenColor('#3d6bff');
+  assert.deepEqual({ r: hex.r, g: hex.g, b: hex.b }, { r: 61, g: 107, b: 255 });
+  // Translucent black over a white backdrop lands mid-grey.
+  const half = flattenColor('rgba(0,0,0,0.5)', { r: 255, g: 255, b: 255, a: 1 });
+  assert.ok(Math.abs(half.r - 127.5) < 1 && Math.abs(half.g - 127.5) < 1);
+  // A color-mix fade to transparent keeps its hue (premultiplied), composited on white.
+  const mixed = flattenColor('color-mix(in srgb, #16181d 50%, transparent)', { r: 255, g: 255, b: 255, a: 1 });
+  assert.ok(mixed.r > 130 && mixed.r < 150); // ~ halfway between #16 and #ff
+});
+
 test('resolveFont extracts the primary family from a descriptive string', () => {
   const f = resolveFont(vibemail);
   assert.deepEqual(f.families, ['JetBrains Mono']);
-  assert.match(f.stack, /"JetBrains Mono"/);
+  assert.match(f.stack, /'JetBrains Mono'/);
   assert.match(f.stack, /monospace/);
 });
 
@@ -98,7 +117,7 @@ test('toCssVars emits :root custom properties for each token group', () => {
   assert.match(css, /:root \{/);
   assert.match(css, /--color-accent: #30d158;/);
   assert.match(css, /--radius-sm: 7px;/);
-  assert.match(css, /--font: "JetBrains Mono"/);
+  assert.match(css, /--font: 'JetBrains Mono'/);
 });
 
 test('toTailwind emits a valid config with token maps', () => {

@@ -99,10 +99,70 @@ function contrastInk(value) {
 /* ------------------------------------------------------ contrast clamp --- */
 
 /** WCAG contrast ratio between two parsed colors. */
-function contrastRatio(a, b) {
+export function contrastRatio(a, b) {
   const hi = Math.max(luminance(a), luminance(b));
   const lo = Math.min(luminance(a), luminance(b));
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Split a string on top-level commas (ignoring those inside parentheses). */
+function splitTopLevel(s) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of s) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { out.push(cur); cur = ''; } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map((x) => x.trim());
+}
+
+/** Parse a color-mix stop "<color> [p%]" → [colorString, percentOrNull]. */
+function parseStop(s) {
+  const m = s.match(/\s([\d.]+)%\s*$/);
+  return m ? [s.slice(0, m.index).trim(), parseFloat(m[1])] : [s.trim(), null];
+}
+
+/** Composite a possibly-translucent parsed color over an opaque backdrop. */
+function compositeOver(fg, bg) {
+  const a = fg.a == null ? 1 : fg.a;
+  return { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a), a: 1 };
+}
+
+/**
+ * Reduce any role color value — hex, rgb(a), or a one-level
+ * `color-mix(in srgb, …)` (including mixes with `transparent`) — to an opaque
+ * {r,g,b} by compositing over `backdrop`. Returns null if it can't be parsed.
+ * Used by the contrast checker so synthesized muted/border roles still grade.
+ */
+export function flattenColor(value, backdrop = { r: 255, g: 255, b: 255, a: 1 }) {
+  if (typeof value !== 'string') return null;
+  const v = value.trim();
+  const mm = v.match(/^color-mix\(\s*in\s+srgb\s*,\s*(.+)\)\s*$/i);
+  if (mm) {
+    const parts = splitTopLevel(mm[1]);
+    if (parts.length < 2) return null;
+    const [c1s, p1raw] = parseStop(parts[0]);
+    const [c2s, p2raw] = parseStop(parts[1]);
+    const c1 = /^transparent$/i.test(c1s) ? { r: 0, g: 0, b: 0, a: 0 } : parseColor(c1s);
+    const c2 = /^transparent$/i.test(c2s) ? { r: 0, g: 0, b: 0, a: 0 } : parseColor(c2s);
+    if (!c1 || !c2) return null;
+    let w1 = p1raw, w2 = p2raw;
+    if (w1 == null && w2 == null) { w1 = 50; w2 = 50; } else if (w1 == null) w1 = 100 - w2; else if (w2 == null) w2 = 100 - w1;
+    const t = w1 + w2 || 1, f1 = w1 / t, f2 = w2 / t;
+    // Premultiplied mix so hue survives a fade to `transparent`.
+    const a = c1.a * f1 + c2.a * f2, un = a || 1;
+    const mixed = {
+      r: (c1.r * c1.a * f1 + c2.r * c2.a * f2) / un,
+      g: (c1.g * c1.a * f1 + c2.g * c2.a * f2) / un,
+      b: (c1.b * c1.a * f1 + c2.b * c2.a * f2) / un,
+      a,
+    };
+    return compositeOver(mixed, backdrop);
+  }
+  const solid = firstSolidColor(v);
+  return solid ? compositeOver(solid.color, backdrop) : null;
 }
 
 function rgbToHsl({ r, g, b }) {

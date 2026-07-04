@@ -3,12 +3,13 @@
 // as --pv-* custom properties, so the markup can lean on CSS classes (and thus
 // hover/active states + click navigation) instead of only inline styles.
 import { typographyToCss, findComponent, tokensToCssVars } from './resolve.js';
-import { resolveRoles, firstSolidColor } from './theme.js';
+import { resolveRoles, firstSolidColor, luminance } from './theme.js';
 import { resolveFont } from './fonts.js';
 import { backdropCss } from './backdrops.js';
 
 export const PRESETS = [
   { id: 'marketing', name: 'Marketing' },
+  { id: 'showcase', name: 'Showcase' },
   { id: 'dashboard', name: 'Dashboard' },
   { id: 'app', name: 'App shell' },
   { id: 'settings', name: 'Settings' },
@@ -58,9 +59,12 @@ function pickTypo(design, patterns) {
 }
 const tS = (design, patterns) => typographyToCss(pickTypo(design, patterns));
 
-function buttonStyle(design, patterns, fallback) {
-  const comp = findComponent(design, patterns);
-  return comp && comp.css ? comp.css : fallback;
+// Keep only the theme-independent declarations of a component style — shape,
+// size, and type carry across themes; background/text/border color do not.
+function structureOnly(css) {
+  return css.split(';').map((d) => d.trim()).filter(Boolean)
+    .filter((d) => /^(border-radius|padding|height|width|font-|letter-spacing|line-height)/i.test(d))
+    .join(';');
 }
 
 const radius = (design, key, fallback) =>
@@ -80,10 +84,40 @@ function buildContext(design, mode) {
   const btnBase = `border-radius:${rPill};padding:0 22px;height:44px`;
   const primaryFallback = `background:${r.accent};color:${r.onAccent}`;
   const ghostFallback = `background:transparent;color:${r.text};border:1px solid ${r.border}`;
-  const primaryBtn = `${btnBase};` +
-    (synthetic ? primaryFallback : buttonStyle(design, ['button-primary', 'btn-primary', 'primary'], primaryFallback));
-  const ghostBtn = `${btnBase};` +
-    (synthetic ? ghostFallback : buttonStyle(design, ['button-ghost', 'ghost', 'button-secondary', 'secondary'], ghostFallback));
+
+  // A button whose fill is self-contained (an opaque, on-brand color that won't
+  // merge into the page, or an intentional transparent) looks identical in both
+  // themes, so we keep the real component style even when synthesizing the
+  // opposite theme — that's what makes light/dark match. Only a fill that would
+  // vanish against the synthesized page (a translucent "glass", or a near-white
+  // button on white) falls back to accent colors while keeping the component's
+  // shape/size/type.
+  const pageBgLum = (() => { const s = firstSolidColor(r.bg); return s ? luminance(s.color) : (r.theme === 'dark' ? 0 : 1); })();
+  const skinIsSafe = (css) => {
+    const m = css.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+    if (!m) return true; // no fill declared → transparent
+    const v = m[1].trim();
+    if (/^(transparent|none)$/i.test(v)) return true;
+    const s = firstSolidColor(v);
+    if (!s) return true;
+    if (s.color.a < 0.85) return false; // translucent glass, built for the other canvas
+    return Math.abs(luminance(s.color) - pageBgLum) > 0.14; // else it merges into the page
+  };
+  const resolveBtn = (patterns, fallback) => {
+    const comp = findComponent(design, patterns);
+    const css = comp && comp.css;
+    if (!css) return fallback;
+    if (!synthetic) return css; // native theme: trust the component fully
+    return skinIsSafe(css) ? css : `${fallback};${structureOnly(css)}`;
+  };
+  const rawPrimary = resolveBtn(['button-primary', 'btn-primary', 'primary'], primaryFallback);
+  const rawGhost = resolveBtn(['button-ghost', 'ghost', 'button-secondary', 'secondary'], ghostFallback);
+  // A component may define its own height (or omit it) independently of its
+  // sibling variants — pin every button to one shared height so primary/ghost/
+  // block buttons never end up different sizes side by side.
+  const btnHeight = (rawPrimary.match(/height\s*:\s*([^;]+)/i) || rawGhost.match(/height\s*:\s*([^;]+)/i) || [, '44px'])[1].trim();
+  const primaryBtn = `${btnBase};${rawPrimary};height:${btnHeight}`;
+  const ghostBtn = `${btnBase};${rawGhost};height:${btnHeight}`;
 
   const solidBg = (firstSolidColor(r.bg) || {}).str || (r.theme === 'dark' ? '#0e0f12' : '#ffffff');
 
@@ -207,6 +241,101 @@ function marketing(c) {
     <section class="pv-quote pv-card pv-glass">
       <p style="${c.type.h3};margin:0 0 12px">“We replaced a folder of screenshots with one DESIGN.md and every new screen just looks right.”</p>
       <div class="pv-quote-by">${avatar(c, 'Priya Rao')}<span><strong style="${c.type.body}">Priya Rao</strong><br><span class="pv-dim" style="${c.type.small}">Head of Design, Northwind</span></span></div>
+    </section>
+    <footer class="pv-footer-lg">
+      <div class="pv-foot-col"><span class="pv-brand" style="${c.type.body}"><span class="pv-brand-mark"></span>${c.name}</span></div>
+      ${[['Product', ['Overview', 'Pricing', 'Changelog']], ['Company', ['About', 'Careers', 'Blog']], ['Legal', ['Privacy', 'Terms']]].map(([h, items]) => `<div class="pv-foot-col"><span class="pv-eyebrow" style="${c.type.small};color:var(--pv-muted)">${h}</span>${items.map((i) => `<span class="pv-dim" style="${c.type.body}">${i}</span>`).join('')}</div>`).join('')}
+    </footer>
+  </div>`;
+}
+
+// A second marketing layout, modeled on live-palette tools (realtimecolors —
+// the scheme distributed as color blocks + a labeled role strip) and editorial
+// launch pages (getdesign.md — a big split hero, statement type, an accent CTA
+// banner). Deliberately more color-forward than the classic Marketing preset.
+function showcase(c) {
+  const links = ['Product', 'Docs', 'Pricing', 'Blog'].map((l) => `<span>${l}</span>`).join('');
+  const logos = ['Northwind', 'Globex', 'Umbrella', 'Hooli'].map((l) => `<span class="pv-logo" style="${c.type.small}">${l}</span>`).join('');
+  const roles = [
+    ['Surface', 'var(--pv-surface)'],
+    ['Text', 'var(--pv-text)'],
+    ['Accent', 'var(--pv-accent)'],
+    ['Muted', 'var(--pv-muted)'],
+    ['Border', 'var(--pv-border)'],
+  ].map(([n, v]) => `<div class="pv-role"><span class="pv-role-swatch" style="background:${v}"></span><span class="pv-role-name pv-dim" style="${c.type.small}">${n}</span></div>`).join('');
+  const features = [
+    { ic: 'palette', t: 'Every role, in place', b: 'Background, text, accent and borders shown where they actually land.' },
+    { ic: 'bolt', t: 'Type that reads', b: 'The display and body ramps set at a real measure, not lorem swatches.' },
+    { ic: 'check', t: 'Components live', b: 'Buttons, cards and inputs render from your component tokens.' },
+  ].map((f) => `
+    <article class="pv-feature pv-card pv-glass">
+      <span class="pv-feature-ic">${icon(f.ic, 'pv-ic-lg')}</span>
+      <h3 style="${c.type.h3};margin:0">${f.t}</h3>
+      <p class="pv-dim" style="${c.type.body};margin:0">${f.b}</p>
+    </article>`).join('');
+
+  return `<div class="pv-page">
+    <nav class="pv-topnav">
+      <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
+      <span class="pv-nav-links pv-dim" style="${c.type.body}">${links}</span>
+      <span class="pv-nav-cta">
+        <button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">Sign in</button>
+        <button class="pv-btn" style="${c.primaryBtn}">Get the kit</button>
+      </span>
+    </nav>
+    <header class="pv-showcase-hero">
+      <div class="pv-showcase-copy">
+        <span class="pv-pill pv-pill-soft" style="${c.type.small}">${icon('palette', 'pv-ic')} Live palette preview</span>
+        <h1 style="${c.type.hero};margin:0">Your tokens, <span class="pv-hl">on a real page</span>.</h1>
+        <p class="pv-dim" style="${c.type.bodyLg};margin:0;max-width:44ch">See every color role, type ramp, and component distributed across an actual landing page — the way a reader meets them, not as isolated swatches.</p>
+        <div class="pv-cta-row pv-cta-start">
+          <button class="pv-btn" style="${c.primaryBtn}">Start free</button>
+          <button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">Read the spec</button>
+        </div>
+        <div class="pv-showcase-logos">${logos}</div>
+      </div>
+      <div class="pv-blocks">
+        <div class="pv-block pv-block-accent">
+          <span class="pv-block-glyph" style="${c.type.hero}">Aa</span>
+          <span class="pv-block-tag" style="${c.type.small}">Accent</span>
+        </div>
+        <div class="pv-block pv-block-surface pv-card">
+          <span class="pv-block-bar"></span>
+          <span class="pv-block-line"></span>
+          <span class="pv-block-line pv-block-short"></span>
+          <span class="pv-block-tag pv-dim" style="${c.type.small}">Surface</span>
+        </div>
+        <div class="pv-block pv-block-soft">
+          ${icon('bolt', 'pv-ic-lg')}
+          <span class="pv-block-tag" style="${c.type.small};color:var(--pv-accent)">Accent soft</span>
+        </div>
+      </div>
+    </header>
+    <section class="pv-palette-strip">${roles}</section>
+    <section class="pv-section pv-split">
+      <div class="pv-split-copy">
+        <p class="pv-eyebrow" style="${c.type.eyebrow};color:var(--pv-accent)">Editorial by default</p>
+        <h2 style="${c.type.h2};margin:0 0 8px">Big type, honest hierarchy</h2>
+        <p class="pv-dim" style="${c.type.body};margin:0 0 14px;max-width:46ch">Headings step through your display and title ramps; body sets at a comfortable measure. Change one token and this whole section reflows.</p>
+        <div class="pv-cta-row pv-cta-start"><button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">See the type scale</button></div>
+      </div>
+      <div class="pv-split-visual pv-card pv-glass">
+        <span style="${c.type.hero};font-size:52px;line-height:1">Ag</span>
+        <p style="${c.type.h3};margin:10px 0 2px">The quick brown fox</p>
+        <p class="pv-dim" style="${c.type.body};margin:0">jumps over the lazy dog · 0123456789</p>
+      </div>
+    </section>
+    <section class="pv-section">
+      <p class="pv-eyebrow" style="${c.type.eyebrow};color:var(--pv-accent)">What you're looking at</p>
+      <h2 style="${c.type.h2};margin:0 0 6px">One file, distributed across a page</h2>
+      <div class="pv-features">${features}</div>
+    </section>
+    <section class="pv-cta-banner">
+      <div class="pv-cta-banner-copy">
+        <h2 style="${c.type.h2};margin:0 0 4px">Ready to ship on-brand?</h2>
+        <p style="${c.type.body};margin:0;opacity:.85">Install the kit and hand your DESIGN.md to any coding agent.</p>
+      </div>
+      <button class="pv-btn" style="${c.primaryBtn};background:var(--pv-on-accent);color:var(--pv-accent)">Get the kit</button>
     </section>
     <footer class="pv-footer-lg">
       <div class="pv-foot-col"><span class="pv-brand" style="${c.type.body}"><span class="pv-brand-mark"></span>${c.name}</span></div>
@@ -461,9 +590,9 @@ function article(c) {
   </div>`;
 }
 
-const LAYOUTS = { marketing, dashboard, app, settings, auth, article };
+const LAYOUTS = { marketing, showcase, dashboard, app, settings, auth, article };
 
-export function renderPreview(root, design, mode, backdrop = 'design', preset = 'marketing') {
+export function renderPreview(root, design, mode, backdrop = 'design', preset = 'showcase') {
   const c = buildContext(design, mode);
   const stageBg = backdropCss(backdrop, c.r);
   root.setAttribute(

@@ -11,9 +11,11 @@ const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const EXAMPLES = [
-  { file: 'atmospheric-glass.md', name: 'Atmospheric Glass' },
+  { file: 'vibemail-glass.md', name: 'VibeMail Glass' },
   { file: 'paws-and-paths.md', name: 'Paws & Paths' },
   { file: 'totality-festival.md', name: 'Totality Festival' },
+  { file: 'ledger-bolt.md', name: 'Ledger Bolt' },
+  { file: 'atelier-form.md', name: 'Atelier Form' },
 ];
 
 const el = {
@@ -142,7 +144,7 @@ function renderAll() {
   if (!current) return;
   renderPreview(el.previewRoot, current.design, current.mode, current.backdrop, current.preset);
   applyPresetWidths(); // reapply drag-resized columns (renderPreview rewrote the style)
-  renderTokens(el.tokenPanel, current.design);
+  renderTokens(el.tokenPanel, current.design, resolveRoles(current.design, current.mode));
   renderProse(el.prosePanel, current.design);
 }
 
@@ -163,7 +165,7 @@ function loadDesign(raw, fileName) {
   }
   clearError();
   const nativeMode = detectTheme(design);
-  current = { design, mode: nativeMode, backdrop: 'design', preset: current?.preset || 'marketing' };
+  current = { design, mode: nativeMode, backdrop: 'design', preset: current?.preset || 'showcase' };
   loadGoogleFonts(resolveFont(design).families);
 
   el.designName.textContent = design.name;
@@ -286,7 +288,7 @@ el.fileInput.addEventListener('change', (e) => readFile(e.target.files[0]));
 );
 el.dropzone.addEventListener('drop', (e) => readFile(e.dataTransfer?.files?.[0]));
 
-$('#load-example-2').addEventListener('click', () => loadExampleFile('atmospheric-glass.md'));
+$('#load-example-2').addEventListener('click', () => loadExampleFile('vibemail-glass.md'));
 $('#reset').addEventListener('click', reset);
 
 document.querySelectorAll('.toggle-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
@@ -337,7 +339,7 @@ el.paneResizer.addEventListener('mousedown', (e) => {
   e.preventDefault();
   const max = Math.round(window.innerWidth * 0.7);
   startDrag(el.paneResizer, (ev) => {
-    const w = Math.min(Math.max(document.documentElement.clientWidth - ev.clientX, 380), max);
+    const w = Math.min(Math.max(document.documentElement.clientWidth - ev.clientX, 400), max);
     el.split.style.setProperty('--token-w', w + 'px');
   });
 });

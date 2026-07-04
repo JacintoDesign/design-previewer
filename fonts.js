@@ -31,10 +31,14 @@ function category(raw) {
   return 'sans-serif';
 }
 
+// Single-quoted, not double: these stacks get interpolated into
+// double-quoted HTML style="..." attributes throughout the renderer, and an
+// embedded `"` there silently truncates the attribute (dropping every CSS
+// property that follows, e.g. a button's height set after its font-family).
 const FALLBACK = {
   monospace: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
-  'sans-serif': 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  serif: "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
+  'sans-serif': "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
 };
 
 /**
@@ -45,7 +49,7 @@ export function familyStack(raw) {
   const name = extractFamily(raw);
   const tail = FALLBACK[category(raw)];
   if (!name || isGeneric(name)) return tail;
-  const quoted = /[^a-zA-Z0-9-]/.test(name) ? `"${name}"` : name;
+  const quoted = /[^a-zA-Z0-9-]/.test(name) ? `'${name}'` : name;
   return `${quoted}, ${tail}`;
 }
 

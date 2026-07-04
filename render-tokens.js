@@ -1,5 +1,6 @@
 // render-tokens.js — the inspector panel (swatches, type scale, radii, spacing, components) + prose notes.
 import { typographyToCss, resolveComponent } from './resolve.js';
+import { flattenColor, contrastRatio, luminance } from './theme.js';
 
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -139,13 +140,31 @@ function renderMotion(motion) {
   return section('Motion', entries.length, `<div class="tk-motions">${items}</div>${hint}`);
 }
 
+// The inspector chips sit on the near-black token panel; composite a chip's
+// fill over that so we can pick readable label ink for it.
+const PANEL_BACKDROP = { r: 8, g: 9, b: 11, a: 1 };
+
+/** Readable label color for a chip whose component sets a fill but no text color. */
+function chipInk(bg) {
+  const c = flattenColor(bg, PANEL_BACKDROP);
+  if (!c) return null; // transparent / unparseable → inherit the panel's text color
+  return luminance(c) > 0.5 ? '#0b0b0c' : '#f5f6f8';
+}
+
 function renderComponents(design) {
   const names = Object.keys(design.components);
   if (!names.length) return '';
   const chips = names
     .map((name) => {
       const comp = resolveComponent(name, design);
-      const style = comp && comp.css ? comp.css : '';
+      let style = comp && comp.css ? comp.css : '';
+      // A partial component (e.g. `button-primary-hover`) may set only a
+      // background; without a text color its label would inherit the panel's
+      // light text and sit unreadable on its own fill. Give it contrasting ink.
+      if (comp && comp.resolved.backgroundColor && !comp.resolved.textColor) {
+        const ink = chipInk(comp.resolved.backgroundColor);
+        if (ink) style += `;color:${ink}`;
+      }
       const looksButton = /button|btn|chip|action/i.test(name);
       const label = looksButton ? name.replace(/[-_]/g, ' ') : name;
       return `<div class="tk-comp">
@@ -157,9 +176,48 @@ function renderComponents(design) {
   return section('Components', names.length, `<div class="tk-comps">${chips}</div>`);
 }
 
-/** Render the full token inspector into `el`. */
-export function renderTokens(el, design) {
+const rgbStr = (c) => `rgb(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)})`;
+
+/**
+ * A WCAG contrast readout for the resolved roles of the current theme — the
+ * "does this palette actually work" check a live palette tool gives you, here
+ * grading the exact colors the preview renders. Text pairs are scored against
+ * AA (4.5) and AAA (7); the border/background pair against the 3.0 UI minimum.
+ */
+function renderContrast(roles) {
+  if (!roles) return '';
+  const bg = flattenColor(roles.bg);
+  if (!bg) return '';
+  const rows = [
+    { label: 'Body text', fg: roles.text, on: roles.bg, kind: 'text' },
+    { label: 'Muted text', fg: roles.muted, on: roles.bg, kind: 'text' },
+    { label: 'Accent', fg: roles.accent, on: roles.bg, kind: 'text' },
+    { label: 'Button label', fg: roles.onAccent, on: roles.accent, kind: 'text' },
+    { label: 'Border', fg: roles.border, on: roles.bg, kind: 'ui' },
+  ];
+  const badge = (ok, txt) => `<span class="tk-con-badge ${ok ? 'pass' : 'fail'}">${txt}</span>`;
+  const items = rows.map((r) => {
+    const base = flattenColor(r.on) || bg;
+    const fg = flattenColor(r.fg, base);
+    if (!fg) return '';
+    const ratio = contrastRatio(fg, base);
+    const badges = r.kind === 'ui'
+      ? badge(ratio >= 3, 'UI 3:1')
+      : badge(ratio >= 4.5, 'AA') + badge(ratio >= 7, 'AAA');
+    return `<div class="tk-con-row">
+      <span class="tk-con-chip" style="background:${rgbStr(base)};color:${rgbStr(fg)}">Ag</span>
+      <span class="tk-con-label">${esc(r.label)}</span>
+      <span class="tk-con-ratio">${ratio.toFixed(2)}:1</span>
+      <span class="tk-con-badges">${badges}</span>
+    </div>`;
+  }).join('');
+  return section('Contrast', 'WCAG', `<div class="tk-contrast">${items}</div>`);
+}
+
+/** Render the full token inspector into `el`. `roles` are the resolved roles for the current theme. */
+export function renderTokens(el, design, roles) {
   el.innerHTML =
+    renderContrast(roles) +
     renderColors(design.colors) +
     renderTypography(design.typography) +
     renderRounded(design.rounded) +
