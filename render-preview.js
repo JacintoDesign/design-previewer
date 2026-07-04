@@ -410,8 +410,7 @@ function dashboard(c) {
       <div class="pv-topbar">
         <div class="pv-search pv-glass"><span class="pv-ic-wrap">${icon('search')}</span><span class="pv-dim" style="${c.type.body}">Search…</span></div>
         <div class="pv-topbar-actions">
-          <button class="pv-iconbtn" aria-label="Notifications">${icon('bell')}</button>
-          <button class="pv-btn" style="${c.primaryBtn}">${icon('plus', 'pv-ic')} New report</button>
+          <button class="pv-btn" style="${c.primaryBtn};height:38px">${icon('plus', 'pv-ic')} New report</button>
           ${avatar(c, 'Jordan Lee')}
         </div>
       </div>

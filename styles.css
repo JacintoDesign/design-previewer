@@ -693,16 +693,9 @@ body {
 .token-export .dd-menu { min-width: 170px; }
 
 /* Collapse the token/notes panel — only meaningful when it's stacked under the
-   preview on narrow screens, so it's hidden on the side-by-side desktop layout. */
-.panel-toggle {
-  display: none; align-items: center; gap: 6px; margin-left: 8px;
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  font: inherit; font-size: 12px; padding: 5px 8px; border-radius: 6px;
-  transition: color .15s ease, background .15s ease;
-}
-.panel-toggle:hover { color: var(--text); background: var(--panel-2); }
-.panel-toggle .dd-chev { transition: transform .18s ease; }
-.panel-toggle[aria-expanded="false"] .dd-chev { transform: rotate(180deg); }
+   preview on narrow screens, so it's hidden on the side-by-side desktop layout.
+   Styled as a `.dd-trigger` (like Export) so the two controls match. */
+.panel-toggle { display: none; margin-left: 8px; }
 
 /* Toolbar can wrap when crowded */
 .toolbar-controls { flex-wrap: wrap; justify-content: flex-end; }

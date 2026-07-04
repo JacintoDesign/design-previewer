@@ -402,7 +402,7 @@ const panelToggle = $('#panel-toggle');
 panelToggle?.addEventListener('click', () => {
   const collapsed = el.result.classList.toggle('is-panel-collapsed');
   panelToggle.setAttribute('aria-expanded', String(!collapsed));
-  panelToggle.setAttribute('aria-label', collapsed ? 'Expand panel' : 'Collapse panel to view the preview');
+  panelToggle.setAttribute('aria-label', collapsed ? 'Show panel' : 'Hide panel');
   const label = panelToggle.querySelector('.panel-toggle-label');
-  if (label) label.textContent = collapsed ? 'Tokens' : 'Hide';
+  if (label) label.textContent = collapsed ? 'Show' : 'Hide';
 });
