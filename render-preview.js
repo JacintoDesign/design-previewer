@@ -84,6 +84,18 @@ function pickTypo(design, patterns) {
 }
 const tS = (design, patterns) => typographyToCss(pickTypo(design, patterns));
 
+// A design's own display/headline size (e.g. 72-96px) is sized for a real
+// browser window, not a preview pane that can be a few hundred px wide on
+// phones — swap the literal px for a clamp so it scales down with the
+// container instead of overflowing or wrapping mid-word.
+const fluidHero = (css) => {
+  const m = css.match(/font-size\s*:\s*([\d.]+)px/i);
+  if (!m) return css;
+  const max = parseFloat(m[1]);
+  const min = Math.min(max, 32);
+  return css.replace(/font-size\s*:\s*[\d.]+px/i, `font-size:clamp(${min}px, 9cqi, ${max}px)`);
+};
+
 // Keep only the theme-independent declarations of a component style — shape,
 // size, and type carry across themes; background/text/border color do not.
 function structureOnly(css) {
@@ -143,17 +155,24 @@ function buildContext(design, mode) {
   const btnHeight = (rawPrimary.match(/height\s*:\s*([^;]+)/i) || rawGhost.match(/height\s*:\s*([^;]+)/i) || [, '44px'])[1].trim();
   const primaryBtn = `${btnBase};${rawPrimary};height:${btnHeight}`;
   const ghostBtn = `${btnBase};${rawGhost};height:${btnHeight}`;
+  // Inputs/search boxes aren't a design's own component, so instead of guessing
+  // a `rounded.*` key (which rarely matches whatever the button actually uses —
+  // a button can win a *different* radius from its own component, or fall back
+  // to the pill default) they borrow the button's own effective radius, taking
+  // the last (i.e. winning) `border-radius` declaration off the cascade above.
+  const radiusMatches = [...primaryBtn.matchAll(/border-radius\s*:\s*([^;]+)/gi)];
+  const rBtn = radiusMatches.length ? radiusMatches[radiusMatches.length - 1][1].trim() : rPill;
 
   const solidBg = (firstSolidColor(r.bg) || {}).str || (r.theme === 'dark' ? '#0e0f12' : '#ffffff');
 
   return {
-    r, rSm, rMd, rLg, rPill,
+    r, rSm, rMd, rLg, rPill, rBtn,
     font: resolveFont(design).stack,
     surfaceSolid: `color-mix(in srgb, ${r.text} 10%, ${solidBg})`,
     name: esc(design.name),
     primaryBtn, ghostBtn,
     type: {
-      hero: tS(design, ['display', 'headline-xl', 'headline-lg', 'headline', 'title', 'heading']),
+      hero: fluidHero(tS(design, ['display', 'headline-xl', 'headline-lg', 'headline', 'title', 'heading'])),
       h2: tS(design, ['headline-md', 'headline', 'title', 'heading', 'label-lg']),
       h3: tS(design, ['title', 'heading', 'headline-sm', 'label-lg', 'label']),
       body: tS(design, ['body-md', 'body', 'body-sm', 'row']),
@@ -172,7 +191,7 @@ function rootVars(c) {
     `--pv-surface-solid:${c.surfaceSolid}`, `--pv-border:${r.border}`,
     `--pv-accent:${r.accent}`, `--pv-on-accent:${r.onAccent}`,
     `--pv-accent-soft:color-mix(in srgb, ${r.accent} 16%, transparent)`,
-    `--pv-r-sm:${c.rSm}`, `--pv-r-md:${c.rMd}`, `--pv-r-lg:${c.rLg}`, `--pv-r-pill:${c.rPill}`,
+    `--pv-r-sm:${c.rSm}`, `--pv-r-md:${c.rMd}`, `--pv-r-lg:${c.rLg}`, `--pv-r-pill:${c.rPill}`, `--pv-r-btn:${c.rBtn}`,
   ].join(';');
 }
 
