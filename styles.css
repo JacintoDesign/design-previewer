@@ -716,7 +716,7 @@ body {
 
 /* Responsive: stack panel under preview */
 @media (max-width: 900px) {
-  .split { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .split { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .token-pane { border-left: none; border-top: 1px solid var(--border); max-height: 45vh; }
   .pane-resizer { display: none; } /* panel is stacked below — nothing to resize horizontally */
 
