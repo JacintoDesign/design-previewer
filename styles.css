@@ -179,13 +179,15 @@ body {
 .dd-option .dd-swatch { width: 30px; height: 26px; }
 .dd-option-sub { color: var(--muted); font-size: 11px; }
 
-.split { flex: 1; display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+.split { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) var(--token-w, 380px); min-height: 0; }
+/* Canvas behind the preview contrasts with the preview's own theme: light under
+   a dark preview, dark under a light one, so the sample UI stands out. */
 .preview-pane {
   overflow: auto;
-  background:
-    repeating-conic-gradient(#1a1c21 0% 25%, #17191e 0% 50%) 0 0 / 22px 22px;
   padding: 24px;
+  background: #e4e6ea;
 }
+.preview-pane[data-preview="light"] { background: #0c0d11; }
 .preview-root {
   min-height: 100%;
   border-radius: 16px;
@@ -200,12 +202,24 @@ body {
 .preview-root > * { flex: 1 0 auto; }
 
 .token-pane {
+  position: relative;
   border-left: 1px solid var(--border);
   background: var(--panel);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
+
+/* Drag handle on the token panel's left edge (min width = the default width). */
+.pane-resizer {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 9px; margin-left: -5px;
+  z-index: 20; cursor: col-resize; touch-action: none;
+}
+.pane-resizer::after {
+  content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px;
+  background: transparent; transition: background .12s;
+}
+.pane-resizer:hover::after, .pane-resizer.is-dragging::after { background: var(--accent); }
 .token-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 8px; }
 .tab-btn {
   background: none; border: none; color: var(--muted);
@@ -360,10 +374,22 @@ body {
 .pv-navdot { width: 8px; height: 8px; flex: none; border-radius: var(--pv-r-pill); background: var(--pv-border); }
 
 /* App shells (dashboard / app / settings) */
-.pv-app { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 100%; }
-.pv-app-3 { grid-template-columns: 190px minmax(0, 300px) minmax(0, 1fr); }
-.pv-app-settings { grid-template-columns: 210px minmax(0, 1fr); }
-.pv-side { padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--pv-border); }
+/* First (and, for the mail shell, second) columns are drag-resizable; the CSS
+   fallback is the minimum width, and --pv-side-w / --pv-list-w only ever grow it. */
+.pv-app { display: grid; grid-template-columns: var(--pv-side-w, 210px) minmax(0, 1fr); min-height: 100%; }
+.pv-app-3 { grid-template-columns: var(--pv-side-w, 190px) var(--pv-list-w, 300px) minmax(0, 1fr); }
+.pv-app-settings { grid-template-columns: var(--pv-side-w, 210px) minmax(0, 1fr); }
+.pv-side { position: relative; padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--pv-border); }
+/* Drag handle sitting on a column's right edge */
+.pv-resizer {
+  position: absolute; top: 0; bottom: 0; right: -4px; width: 9px; z-index: 9;
+  cursor: col-resize; touch-action: none;
+}
+.pv-resizer::after {
+  content: ""; position: absolute; right: 4px; top: 0; bottom: 0; width: 2px;
+  background: transparent; transition: background .12s;
+}
+.pv-resizer:hover::after, .pv-resizer.is-dragging::after { background: var(--pv-accent); }
 .pv-side .pv-brand { margin: 0 6px 12px; }
 .pv-side .pv-btn { margin-bottom: 8px; }
 .pv-side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--pv-border); display: flex; flex-direction: column; gap: 6px; }
@@ -391,7 +417,7 @@ body {
 .pv-tcell-name .pv-avatar { width: 24px; height: 24px; font-size: 10px; }
 
 /* App shell (mail) */
-.pv-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; border-right: 1px solid var(--pv-border); }
+.pv-list { position: relative; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; border-right: 1px solid var(--pv-border); }
 .pv-rows { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .pv-row {
   display: flex; gap: 10px; width: 100%; padding: 11px 12px; text-align: left; font: inherit; cursor: pointer;
@@ -472,7 +498,7 @@ body {
 .pv-auth-foot { text-align: center; margin: 6px 0 0; }
 
 /* Article */
-.pv-article-wrap { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 28px; max-width: 900px; margin: 0 auto; padding: 34px 32px; }
+.pv-article-wrap { display: grid; grid-template-columns: var(--pv-toc-w, 170px) minmax(0, 1fr); gap: 28px; max-width: 900px; margin: 0 auto; padding: 34px 32px; }
 .pv-toc { position: sticky; top: 20px; align-self: start; display: flex; flex-direction: column; gap: 8px; }
 .pv-toc-nav .pv-navitem { padding: 6px 10px; }
 .pv-article { min-width: 0; }
@@ -490,6 +516,7 @@ body {
   .pv-app, .pv-app-settings { grid-template-columns: 170px minmax(0, 1fr); }
   .pv-app-3 { grid-template-columns: 165px minmax(0, 230px) minmax(0, 1fr); }
   .pv-stats { grid-template-columns: repeat(2, 1fr); }
+  .pv-resizer { display: none; } /* fixed columns below this width — no resizing */
 }
 @container (max-width: 660px) {
   .pv-app-3 { grid-template-columns: 155px minmax(0, 1fr); }
@@ -544,6 +571,7 @@ body {
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   .token-pane { border-left: none; border-top: 1px solid var(--border); max-height: 45vh; }
+  .pane-resizer { display: none; } /* panel is stacked below — nothing to resize horizontally */
 }
 
 /* ---- About / doc page ------------------------------------------------- */

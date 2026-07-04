@@ -25,6 +25,9 @@ const el = {
   designName: $('#design-name'),
   fileName: $('#file-name'),
   previewRoot: $('#preview-root'),
+  previewPane: $('.preview-pane'),
+  split: $('.split'),
+  paneResizer: $('#pane-resizer'),
   tokenPanel: $('#token-panel'),
   prosePanel: $('#prose-panel'),
   presetLabel: $('#preset-label'),
@@ -33,7 +36,7 @@ const el = {
   toast: $('#toast'),
 };
 
-let current = null; // { design, mode, backdrop, preset }
+let current = null; // { design, mode, backdrop, preset, presetW }
 let toastTimer = null;
 
 /* --------------------------------------------------------- accessible dd --- */
@@ -138,8 +141,16 @@ function clearError() { el.introError.hidden = true; }
 function renderAll() {
   if (!current) return;
   renderPreview(el.previewRoot, current.design, current.mode, current.backdrop, current.preset);
+  applyPresetWidths(); // reapply drag-resized columns (renderPreview rewrote the style)
   renderTokens(el.tokenPanel, current.design);
   renderProse(el.prosePanel, current.design);
+}
+
+/** Re-apply any drag-resized preset column widths onto the freshly-rendered root. */
+function applyPresetWidths() {
+  const w = current && current.presetW;
+  if (!w) return;
+  for (const [k, v] of Object.entries(w)) el.previewRoot.style.setProperty(k, v);
 }
 
 function loadDesign(raw, fileName) {
@@ -167,6 +178,7 @@ function loadDesign(raw, fileName) {
 function setMode(mode) {
   if (current) current.mode = mode;
   document.querySelectorAll('.toggle-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === mode));
+  el.previewPane.dataset.preview = mode; // canvas contrasts with the preview theme
   renderAll();
   updateBackdropTrigger();
 }
@@ -224,6 +236,7 @@ setupDropdown('preset-dd', {
   onSelect: (id) => {
     if (!current) return;
     current.preset = id;
+    current.presetW = {}; // reset column widths for the new layout
     el.presetLabel.textContent = (PRESETS.find((p) => p.id === id) || PRESETS[0]).name;
     renderPreview(el.previewRoot, current.design, current.mode, current.backdrop, id);
   },
@@ -297,6 +310,56 @@ el.previewRoot.addEventListener('click', (e) => {
   }
   scope.querySelectorAll('[data-panel]').forEach((p) => {
     if (navGroup(p.dataset.panel) === grp) p.hidden = p.dataset.panel !== nav.dataset.nav;
+  });
+});
+
+// --- Resizing -------------------------------------------------------------
+
+/** Run a horizontal drag: onMove(ev) each mousemove until mouseup. */
+function startDrag(handle, onMove) {
+  handle.classList.add('is-dragging');
+  document.body.style.userSelect = 'none';
+  document.body.style.cursor = 'col-resize';
+  const move = (ev) => onMove(ev);
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    handle.classList.remove('is-dragging');
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+// Token panel: drag its left edge to widen it (default width is the minimum).
+el.paneResizer.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const max = Math.round(window.innerWidth * 0.7);
+  startDrag(el.paneResizer, (ev) => {
+    const w = Math.min(Math.max(document.documentElement.clientWidth - ev.clientX, 380), max);
+    el.split.style.setProperty('--token-w', w + 'px');
+  });
+});
+
+// Preset columns: drag a .pv-resizer to widen the sidebar / list (default = min).
+// Delegated on the persistent root; widths are stored so they survive re-render.
+const RESIZE_VAR = { side: '--pv-side-w', list: '--pv-list-w', toc: '--pv-toc-w' };
+el.previewRoot.addEventListener('mousedown', (e) => {
+  const h = e.target.closest('.pv-resizer');
+  if (!h) return;
+  e.preventDefault();
+  const varName = RESIZE_VAR[h.dataset.resize];
+  if (!varName || !current) return;
+  const min = parseInt(h.dataset.min, 10) || 150;
+  const max = Math.round(el.previewRoot.clientWidth * 0.5);
+  const startX = e.clientX;
+  const startW = h.parentElement.getBoundingClientRect().width;
+  startDrag(h, (ev) => {
+    const w = Math.min(Math.max(startW + (ev.clientX - startX), min), max);
+    el.previewRoot.style.setProperty(varName, w + 'px');
+    current.presetW = current.presetW || {};
+    current.presetW[varName] = w + 'px';
   });
 });
 

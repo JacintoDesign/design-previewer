@@ -128,6 +128,9 @@ const navItem = (c, { ic, label, nav, active, count, scroll }) =>
 
 const avatar = (c, name) => `<span class="pv-avatar" style="${c.type.small}">${initials(name)}</span>`;
 
+// Drag handle for a resizable column (kind → CSS var, min → the column's floor).
+const resizer = (kind, min) => `<div class="pv-resizer" data-resize="${kind}" data-min="${min}"></div>`;
+
 const field = (c, { label, value, placeholder, type = 'text' }) => `
   <label class="pv-field">
     <span class="pv-field-label" style="${c.type.small}">${esc(label)}</span>
@@ -244,6 +247,7 @@ function dashboard(c) {
       <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
       <nav class="pv-nav-col">${nav}</nav>
       <div class="pv-side-foot">${navItem(c, { ic: 'gear', label: 'Settings' })}<div class="pv-userchip">${avatar(c, 'Jordan Lee')}<span style="${c.type.small}"><strong>Jordan Lee</strong><br><span class="pv-dim">Owner</span></span></div></div>
+      ${resizer('side', 210)}
     </aside>
     <main class="pv-main">
       <div class="pv-topbar">
@@ -324,6 +328,7 @@ function app(c) {
       <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
       <button class="pv-btn pv-btn-block" style="${c.primaryBtn}">${icon('plus', 'pv-ic')} Compose</button>
       <nav class="pv-nav-col">${folders}</nav>
+      ${resizer('side', 190)}
     </aside>
     <section class="pv-list pv-glass">
       <div class="pv-search pv-glass"><span class="pv-ic-wrap">${icon('search')}</span><span class="pv-dim" style="${c.type.body}">Search mail</span></div>
@@ -332,6 +337,7 @@ function app(c) {
       ${listFor('sent', sent)}
       ${listFor('drafts', [{ id: 'd', s: 'Draft', t: 'Untitled', p: 'No recipients yet…', time: '—', unread: false }])}
       ${listFor('archive', sent)}
+      ${resizer('list', 300)}
     </section>
     <section class="pv-read">
       <div class="pv-read-tools"><button class="pv-iconbtn" aria-label="Archive">${icon('archive')}</button><button class="pv-iconbtn" aria-label="Star">${icon('star')}</button></div>
@@ -356,6 +362,7 @@ function settings(c) {
     <aside class="pv-side pv-glass">
       <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>Settings</span>
       <nav class="pv-nav-col">${nav}</nav>
+      ${resizer('side', 210)}
     </aside>
     <main class="pv-settings-main">
       <div class="pv-settings-panel" data-panel="sec:account">
@@ -426,6 +433,7 @@ function article(c) {
     <aside class="pv-toc">
       <span class="pv-eyebrow" style="${c.type.small};color:var(--pv-muted)">On this page</span>
       <nav class="pv-nav-col pv-toc-nav">${toc}</nav>
+      ${resizer('toc', 170)}
     </aside>
     <article class="pv-article">
       <span class="pv-pill pv-pill-soft" style="${c.type.small}">Guide</span>
