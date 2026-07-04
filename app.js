@@ -373,3 +373,13 @@ document.querySelectorAll('.tab-btn').forEach((btn) =>
     document.querySelectorAll('[data-tab-content]').forEach((c) => { c.hidden = c.dataset.tabContent !== tab; });
   })
 );
+
+// Collapse the token panel to view the preview (only shown when stacked on mobile).
+const panelToggle = $('#panel-toggle');
+panelToggle?.addEventListener('click', () => {
+  const collapsed = el.result.classList.toggle('is-panel-collapsed');
+  panelToggle.setAttribute('aria-expanded', String(!collapsed));
+  panelToggle.setAttribute('aria-label', collapsed ? 'Expand panel' : 'Collapse panel to view the preview');
+  const label = panelToggle.querySelector('.panel-toggle-label');
+  if (label) label.textContent = collapsed ? 'Tokens' : 'Hide';
+});

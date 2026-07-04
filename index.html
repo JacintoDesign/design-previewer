@@ -14,7 +14,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">◆</span>
-      <span class="brand-name">DESIGN.md&nbsp;Previewer</span>
+      <span class="brand-name">DESIGN.md<span class="brand-suffix">&nbsp;Previewer</span></span>
     </div>
     <nav class="topbar-actions">
       <a class="link" href="about.html">What is DESIGN.md?</a>
@@ -96,6 +96,11 @@
               </button>
               <div id="export-menu" class="dd-menu" role="menu" aria-label="Export tokens" hidden></div>
             </div>
+            <button id="panel-toggle" class="panel-toggle" type="button"
+                    aria-expanded="true" aria-controls="token-panel" aria-label="Collapse panel to view the preview">
+              <span class="panel-toggle-label">Hide</span>
+              <span class="dd-chev" aria-hidden="true">▾</span>
+            </button>
           </div>
           <div id="token-panel" class="token-panel" data-tab-content="tokens"><!-- injected --></div>
           <div id="prose-panel" class="prose-panel" data-tab-content="prose" hidden><!-- injected --></div>

@@ -164,7 +164,7 @@ body {
 }
 .dd-trigger.dd-plain { padding: 0 14px; } /* no leading swatch */
 .dd-trigger:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
-.dd-label { line-height: 1; }
+.dd-label { line-height: 1; white-space: nowrap; }
 .dd-chev { color: var(--muted); font-size: 10px; }
 .dd-swatch {
   width: 22px; height: 22px; border-radius: 6px; flex: none;
@@ -664,6 +664,18 @@ body {
 .token-export .dd-trigger { font-size: 12px; padding: 5px 11px; }
 .token-export .dd-menu { min-width: 170px; }
 
+/* Collapse the token/notes panel — only meaningful when it's stacked under the
+   preview on narrow screens, so it's hidden on the side-by-side desktop layout. */
+.panel-toggle {
+  display: none; align-items: center; gap: 6px; margin-left: 8px;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font: inherit; font-size: 12px; padding: 5px 8px; border-radius: 6px;
+  transition: color .15s ease, background .15s ease;
+}
+.panel-toggle:hover { color: var(--text); background: var(--panel-2); }
+.panel-toggle .dd-chev { transition: transform .18s ease; }
+.panel-toggle[aria-expanded="false"] .dd-chev { transform: rotate(180deg); }
+
 /* Toolbar can wrap when crowded */
 .toolbar-controls { flex-wrap: wrap; justify-content: flex-end; }
 
@@ -686,6 +698,12 @@ body {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   .token-pane { border-left: none; border-top: 1px solid var(--border); max-height: 45vh; }
   .pane-resizer { display: none; } /* panel is stacked below — nothing to resize horizontally */
+
+  /* Let the panel collapse to just its tab bar so the preview fills the screen. */
+  .panel-toggle { display: inline-flex; }
+  .is-panel-collapsed .token-pane { max-height: none; }
+  .is-panel-collapsed .token-panel,
+  .is-panel-collapsed .prose-panel { display: none; }
 }
 
 /* Vertical smartphone: keep the chrome on one row, stack the toolbar, tighten padding */
@@ -698,10 +716,18 @@ body {
   .topbar-actions .link { display: none; } /* About is secondary; still reachable from the footer link on the about page itself */
   .brand-mark { font-size: 16px; }
 
-  .result-toolbar { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px 14px; }
-  .toolbar-controls { justify-content: flex-start; gap: 8px; }
+  .result-toolbar { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 14px; }
   .file-meta { gap: 8px; }
   .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Row 2: dropdowns + theme toggle + New file, shrunk to sit on one row. */
+  .toolbar-controls { flex-wrap: nowrap; justify-content: flex-start; gap: 5px; }
+  .toolbar-controls .dd-trigger { height: 32px; padding: 0 7px 0 4px; gap: 4px; font-size: 12px; }
+  .toolbar-controls .dd-trigger.dd-plain { padding: 0 8px; }
+  .toolbar-controls .dd-swatch { width: 16px; height: 16px; }
+  .toolbar-controls .theme-toggle { height: 32px; padding: 2px; }
+  .toolbar-controls .toggle-btn { padding: 0 8px; font-size: 12px; }
+  .toolbar-controls .btn-secondary { height: 32px; padding: 0 10px; font-size: 12px; }
 
   .preview-pane { padding: 12px; }
   .token-pane { max-height: 52vh; }
@@ -718,6 +744,17 @@ body {
 @media (max-width: 380px) {
   .tk-swatches { grid-template-columns: 1fr; }
   .tk-shadows { grid-template-columns: 1fr; }
+
+  .brand-suffix { display: none; } /* "DESIGN.md" alone — full name returns above this width */
+
+  /* Toolbar controls need another pass of shrinking to all fit on one row. */
+  .toolbar-controls { gap: 4px; }
+  .toolbar-controls .dd-trigger { height: 30px; padding: 0 5px 0 3px; gap: 3px; font-size: 11px; }
+  .toolbar-controls .dd-trigger.dd-plain { padding: 0 6px; }
+  .toolbar-controls .dd-swatch { width: 14px; height: 14px; }
+  .toolbar-controls .theme-toggle { height: 30px; }
+  .toolbar-controls .toggle-btn { padding: 0 6px; font-size: 11px; }
+  .toolbar-controls .btn-secondary { height: 30px; padding: 0 8px; font-size: 11px; }
 }
 
 /* ---- About / doc page ------------------------------------------------- */
