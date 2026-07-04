@@ -47,6 +47,31 @@ const icon = (n, cls = 'pv-ic') =>
 
 const initials = (name) => esc(name.replace(/[^a-zA-Z ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '•');
 
+// Shared brand + links + CTA nav, used by both marketing() and showcase().
+// Below a container width the inline links/CTA give way to a hamburger button
+// that reveals a stacked mobile panel — plain-DOM toggle via inline onclick
+// since this markup is re-templated on every render (no persistent listeners).
+function navBlock(c, navClass, links, ctaLabel) {
+  const linksHtml = links.map((l) => `<span>${l}</span>`).join('');
+  const ctaHtml = `
+        <button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">Sign in</button>
+        <button class="pv-btn" style="${c.primaryBtn}">${ctaLabel}</button>`;
+  return `
+    <nav class="${navClass}">
+      <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
+      <span class="pv-nav-links pv-dim" style="${c.type.body}">${linksHtml}</span>
+      <span class="pv-nav-cta">${ctaHtml}</span>
+      <button class="pv-nav-toggle" type="button" aria-label="Menu" aria-expanded="false"
+        onclick="var p=this.parentElement.nextElementSibling;var open=p.classList.toggle('is-open');this.classList.toggle('is-open',open);this.setAttribute('aria-expanded',open);">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+    <div class="pv-nav-mobile">
+      <span class="pv-nav-links-mobile pv-dim" style="${c.type.body}">${linksHtml}</span>
+      <span class="pv-nav-cta-mobile">${ctaHtml}</span>
+    </div>`;
+}
+
 /* ------------------------------------------------------------- context --- */
 
 function pickTypo(design, patterns) {
@@ -180,7 +205,6 @@ const toggle = (c, label, on) => `
 /* ------------------------------------------------------------- layouts --- */
 
 function marketing(c) {
-  const links = ['Product', 'Solutions', 'Pricing', 'Docs'].map((l) => `<span>${l}</span>`).join('');
   const logos = ['Northwind', 'Globex', 'Umbrella', 'Initech', 'Hooli'].map((l) => `<span class="pv-logo" style="${c.type.body}">${l}</span>`).join('');
   const features = [
     { ic: 'bolt', t: 'Fast by default', b: 'Ship on-brand screens without hand-tuning a single value.' },
@@ -207,14 +231,7 @@ function marketing(c) {
     </div>`).join('');
 
   return `<div class="pv-page">
-    <nav class="pv-nav pv-glass">
-      <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
-      <span class="pv-nav-links pv-dim" style="${c.type.body}">${links}</span>
-      <span class="pv-nav-cta">
-        <button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">Sign in</button>
-        <button class="pv-btn" style="${c.primaryBtn}">Get started</button>
-      </span>
-    </nav>
+    ${navBlock(c, 'pv-nav pv-glass', ['Product', 'Solutions', 'Pricing', 'Docs'], 'Get started')}
     <header class="pv-hero">
       <span class="pv-pill pv-pill-soft" style="${c.type.small}">${icon('bolt', 'pv-ic')} New — live token preview</span>
       <h1 style="${c.type.hero};margin:0;max-width:15ch">Design once. Ship it everywhere.</h1>
@@ -254,7 +271,6 @@ function marketing(c) {
 // launch pages (getdesign.md — a big split hero, statement type, an accent CTA
 // banner). Deliberately more color-forward than the classic Marketing preset.
 function showcase(c) {
-  const links = ['Product', 'Docs', 'Pricing', 'Blog'].map((l) => `<span>${l}</span>`).join('');
   const logos = ['Northwind', 'Globex', 'Umbrella', 'Hooli'].map((l) => `<span class="pv-logo" style="${c.type.small}">${l}</span>`).join('');
   const roles = [
     ['Surface', 'var(--pv-surface)'],
@@ -275,14 +291,7 @@ function showcase(c) {
     </article>`).join('');
 
   return `<div class="pv-page">
-    <nav class="pv-topnav">
-      <span class="pv-brand" style="${c.type.h3}"><span class="pv-brand-mark"></span>${c.name}</span>
-      <span class="pv-nav-links pv-dim" style="${c.type.body}">${links}</span>
-      <span class="pv-nav-cta">
-        <button class="pv-btn pv-btn-ghost" style="${c.ghostBtn}">Sign in</button>
-        <button class="pv-btn" style="${c.primaryBtn}">Get the kit</button>
-      </span>
-    </nav>
+    ${navBlock(c, 'pv-topnav', ['Product', 'Docs', 'Pricing', 'Blog'], 'Get the kit')}
     <header class="pv-showcase-hero">
       <div class="pv-showcase-copy">
         <span class="pv-pill pv-pill-soft" style="${c.type.small}">${icon('palette', 'pv-ic')} Live palette preview</span>

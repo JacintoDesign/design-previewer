@@ -480,6 +480,32 @@ body {
 .pv-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 14px 14px 0; padding: 10px 10px 10px 18px; border: 1px solid var(--pv-border); border-radius: var(--pv-r-lg); background: var(--pv-surface); }
 .pv-nav-links { display: flex; align-items: center; gap: 20px; }
 .pv-nav-cta { display: flex; align-items: center; gap: 10px; }
+
+/* Hamburger toggle + stacked mobile menu — swapped in for .pv-nav-links/.pv-nav-cta
+   once the container gets too narrow for the inline nav (see container queries below). */
+.pv-nav-toggle {
+  display: none; flex: none;
+  flex-direction: column; justify-content: center; align-items: center; gap: 4px;
+  width: 34px; height: 30px; padding: 0;
+  background: none; border: 1px solid var(--pv-border); border-radius: var(--pv-r-sm);
+  cursor: pointer; transition: border-color .15s ease;
+}
+.pv-nav-toggle:hover { border-color: color-mix(in srgb, var(--pv-accent) 55%, var(--pv-border)); }
+.pv-nav-toggle span { display: block; width: 16px; height: 2px; border-radius: 2px; background: var(--pv-text); transition: transform .18s ease, opacity .18s ease; }
+.pv-nav-toggle.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.pv-nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.pv-nav-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+.pv-nav-mobile {
+  display: none; flex-direction: column; gap: 14px;
+  padding: 16px 20px 20px; background: var(--pv-surface); border-bottom: 1px solid var(--pv-border);
+}
+.pv-nav-mobile.is-open { display: flex; }
+.pv-nav-links-mobile { display: flex; flex-direction: column; gap: 12px; }
+.pv-nav-cta-mobile { display: flex; flex-direction: column; gap: 10px; }
+.pv-nav-cta-mobile .pv-btn { width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .pv-nav-toggle span { transition: none; }
+}
 .pv-hero { padding: 52px 32px 28px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; }
 .pv-cta-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .pv-logos { display: flex; flex-wrap: wrap; gap: 22px 40px; justify-content: center; padding: 6px 32px; opacity: .6; }
@@ -637,7 +663,9 @@ body {
   .pv-article-wrap { grid-template-columns: 1fr; }
   .pv-toc { display: none; }
   .pv-form-row { grid-template-columns: 1fr; }
-  .pv-nav-links { display: none; }
+  .pv-nav-links, .pv-nav-cta { display: none; }
+  .pv-nav-toggle { display: flex; }
+  .pv-brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pv-showcase-hero, .pv-split { grid-template-columns: 1fr; }
 }
 @container (max-width: 470px) {

@@ -44,6 +44,28 @@ let toastTimer = null;
 /* --------------------------------------------------------- accessible dd --- */
 
 /**
+ * Menus are anchored flush-right to their trigger by default (`right: 0` in
+ * CSS). A trigger near the left edge of a narrow viewport can then push its
+ * menu off-screen to the left, so after showing it we measure and, if it
+ * overflows either edge, switch to an explicit left offset that pulls it back
+ * into view.
+ */
+function clampMenuToViewport(dd, menu) {
+  menu.style.left = '';
+  menu.style.right = '';
+  const margin = 8;
+  const ddRect = dd.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  let shift = 0;
+  if (menuRect.left < margin) shift = margin - menuRect.left;
+  else if (menuRect.right > window.innerWidth - margin) shift = (window.innerWidth - margin) - menuRect.right;
+  if (shift) {
+    menu.style.right = 'auto';
+    menu.style.left = `${menuRect.left - ddRect.left + shift}px`;
+  }
+}
+
+/**
  * Wire a `.dd` dropdown: click/keyboard open-close, arrow-key roving, Escape,
  * outside-click, focus return. `onOpen` (re)builds the menu; `onSelect(value)`
  * fires for the chosen `[data-value]` option.
@@ -66,6 +88,7 @@ function setupDropdown(id, { onOpen, onSelect }) {
     menu.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
     idx = -1;
+    clampMenuToViewport(dd, menu);
     requestAnimationFrame(() => focusItem(Math.max(0, items().findIndex((n) => n.classList.contains('is-active')))));
   };
   const close = (returnFocus) => {
